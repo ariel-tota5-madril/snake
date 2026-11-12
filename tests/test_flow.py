@@ -441,3 +441,44 @@ def test_turning_emits_nothing():
     flow = playing_and_drained()
     flow.direction(Direction.UP)
     assert flow.drain_sounds() == []
+
+
+# T014 — música
+def sounds_until(flow: Flow, phase: Phase, dt: float = 50) -> list:
+    events = flow.drain_sounds()
+    for _ in range(2000):
+        if flow.phase is phase:
+            return events
+        if flow.phase is Phase.TITLE:
+            flow.confirm()
+        flow.update(dt)
+        events += flow.drain_sounds()
+    raise AssertionError(f"não chegou em {phase}")
+
+
+def test_title_music_starts_with_the_title():
+    assert SoundEvent.MUSIC_TITLE in Flow(seed=1).drain_sounds()
+
+
+def test_game_music_starts_when_countdown_ends():
+    flow = Flow(seed=1)
+    events = sounds_until(flow, Phase.COUNTDOWN)
+    assert SoundEvent.MUSIC_GAME not in events
+    events = sounds_until(flow, Phase.PLAYING)
+    assert SoundEvent.MUSIC_GAME in events
+
+
+def test_loss_stops_music_then_plays_lose_jingle():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    events = sounds_until(flow, Phase.MENU)
+    assert SoundEvent.MUSIC_STOP in events and SoundEvent.LOSE in events
+    assert events.index(SoundEvent.MUSIC_STOP) < events.index(SoundEvent.LOSE)
+    assert SoundEvent.WIN not in events
+
+
+def test_win_stops_music_then_plays_win_jingle():
+    flow = advance_through_title(Flow(seed=1, width=4, height=1))
+    events = sounds_until(flow, Phase.MENU)
+    assert SoundEvent.MUSIC_STOP in events and SoundEvent.WIN in events
+    assert events.index(SoundEvent.MUSIC_STOP) < events.index(SoundEvent.WIN)

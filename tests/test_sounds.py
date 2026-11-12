@@ -41,3 +41,22 @@ def test_eat_rises_in_pitch():
 
 def test_crash_lasts_about_350ms():
     assert 300 <= duration_ms(sounds.SFX[SoundEvent.CRASH][0]) <= 400
+
+
+# T013 — músicas e jingles
+NEAR_ZERO = 1200
+
+
+@pytest.mark.parametrize("event,bpm", [(SoundEvent.MUSIC_TITLE, 120), (SoundEvent.MUSIC_GAME, 150)])
+def test_music_lasts_whole_bars_and_loops_without_click(event, bpm):
+    samples = sounds.MUSIC[event]
+    bar_ms = 4 * 60000 / bpm
+    bars = duration_ms(samples) / bar_ms
+    assert round(bars) >= 4
+    assert abs(bars - round(bars)) * bar_ms <= 20  # erro de arredondamento das notas
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO  # emenda sem estalo
+
+
+def test_jingles_exist_and_are_short():
+    for event in (SoundEvent.LOSE, SoundEvent.WIN):
+        assert 0 < duration_ms(sounds.JINGLES[event]) < 2000

@@ -75,6 +75,7 @@ class Flow:
         self._step_elapsed = 0.0
         self._sounds: list[SoundEvent] = []
         self._pop_in_ms: float | None = None
+        self._emit(SoundEvent.MUSIC_TITLE)
 
     # --- consultas ------------------------------------------------------------------------
 
@@ -143,6 +144,7 @@ class Flow:
             self._go(Phase.COUNTDOWN)
         elif self.phase is Phase.COUNTDOWN and self.phase_ms >= COUNTDOWN_MS:
             self._go(Phase.PLAYING)
+            self._emit(SoundEvent.MUSIC_GAME)
             self._step_once()  # a cobra anda assim que a contagem termina (SC-003)
             self._check_end()
         elif self.phase is Phase.PLAYING:
@@ -185,11 +187,14 @@ class Flow:
         if self.game.status is Status.GAME_OVER:
             self.shake.trigger(*COLLISION_SHAKE)
             self._emit(SoundEvent.CRASH)
+            self._emit(SoundEvent.MUSIC_STOP)
             self._go(Phase.SHAKING)
         elif self.game.status is Status.WON:
+            self._emit(SoundEvent.MUSIC_STOP)
             self._open_menu()
 
     def _open_menu(self) -> None:
+        self._emit(SoundEvent.LOSE if self.game.status is Status.GAME_OVER else SoundEvent.WIN)
         self.menu = EndMenu()
         self._go(Phase.MENU_IN)
 

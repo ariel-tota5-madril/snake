@@ -6,7 +6,7 @@ Todo o áudio é composto aqui e sintetizado por `snake.synth` (FR-001: criado p
 from array import array
 
 from snake.flow import SoundEvent
-from snake.synth import Note, render
+from snake.synth import Note, mix, render
 
 SFX: dict[SoundEvent, tuple[array, float]] = {}
 JINGLES: dict[SoundEvent, array] = {}
@@ -21,6 +21,102 @@ def _gameplay_sfx() -> None:
     SFX[SoundEvent.CRASH] = (render([Note("noise", 6000, 350, freq_end=700, decay=1)]), 0.9)
 
 
+# --- notação musical -------------------------------------------------------------------
+
+NOTE_INDEX = {"C": -9, "D": -7, "E": -5, "F": -4, "G": -2, "A": 0, "B": 2}
+
+
+def freq(name: str) -> float:
+    """'A4' -> 440 Hz; aceita sustenido ('F#4'); 'R' é pausa."""
+    if name == "R":
+        return 0.0
+    letter, sharp, octave = name[0], name.count("#"), int(name[-1])
+    semitones = NOTE_INDEX[letter] + sharp + 12 * (octave - 4)
+    return 440.0 * 2 ** (semitones / 12)
+
+
+def voice(wave: str, bpm: int, notes: list[tuple[str, float]], volume: float, decay: float = 0.0):
+    beat_ms = 60000 / bpm
+    return render([Note(wave, freq(n), beats * beat_ms, volume, decay=decay) for n, beats in notes])
+
+
+def bass_line(chords: list[tuple[str, float]]) -> list[tuple[str, float]]:
+    """Baixo em colcheias alternando fundamental e oitava (ex.: ('A2', 4) = 4 tempos de A)."""
+    line = []
+    for root, beats in chords:
+        octave = root[:-1] + str(int(root[-1]) + 1)
+        line += [(root, 0.5), (octave, 0.5)] * int(beats)
+    return line
+
+
+def drum_track(bpm: int, bars: int, volume: float) -> array:
+    """Bumbo nos tempos 1 e 3, caixa no 2 e 4, chimbal nas colcheias."""
+    eighth = 60000 / bpm / 2
+    kick = Note("noise", 1200, eighth, volume, freq_end=300, decay=1)
+    hat = Note("noise", 16000, eighth, volume * 0.35, decay=1)
+    snare = Note("noise", 9000, eighth, volume * 0.8, decay=1)
+    bar = [kick, hat, snare, hat, kick, hat, snare, hat]
+    return render(bar * bars)
+
+
+def song(bpm: int, melody, chords, lead: str, bars: int) -> array:
+    return mix(
+        voice(lead, bpm, melody, 0.42),
+        voice("triangle", bpm, bass_line(chords), 0.55),
+        drum_track(bpm, bars, 0.22),
+    )
+
+
+# --- músicas (composições originais) ---------------------------------------------------
+
+TITLE_BPM = 120
+TITLE_MELODY = [
+    ("C5", .5), ("E5", .5), ("G5", .5), ("E5", .5), ("A5", 1), ("G5", 1),
+    ("F5", .5), ("E5", .5), ("D5", .5), ("C5", .5), ("D5", 1), ("G4", 1),
+    ("C5", .5), ("E5", .5), ("G5", .5), ("C6", .5), ("B5", 1), ("G5", 1),
+    ("A5", .5), ("G5", .5), ("F5", .5), ("D5", .5), ("C5", 2),
+    ("E5", .5), ("G5", .5), ("A5", .5), ("G5", .5), ("E5", 1), ("C5", 1),
+    ("D5", .5), ("E5", .5), ("F5", .5), ("A5", .5), ("G5", 2),
+    ("E5", .5), ("F5", .5), ("G5", .5), ("C6", .5), ("A5", 1), ("F5", 1),
+    ("G5", .5), ("F5", .5), ("E5", .5), ("D5", .5), ("C5", 2),
+]
+TITLE_CHORDS = [("C2", 4), ("G2", 4), ("C2", 4), ("F2", 2), ("G2", 2),
+                ("A2", 4), ("F2", 4), ("F2", 2), ("G2", 2), ("C2", 4)]
+
+GAME_BPM = 150
+GAME_MELODY = [
+    ("A4", .5), ("C5", .5), ("E5", .5), ("A5", .5), ("G5", .5), ("E5", .5), ("C5", .5), ("E5", .5),
+    ("F5", .5), ("E5", .5), ("D5", .5), ("C5", .5), ("D5", 1), ("E5", 1),
+    ("A4", .5), ("C5", .5), ("E5", .5), ("A5", .5), ("B5", .5), ("A5", .5), ("G5", .5), ("E5", .5),
+    ("F5", .5), ("G5", .5), ("A5", .5), ("G5", .5), ("E5", 2),
+    ("C6", .5), ("B5", .5), ("A5", .5), ("G5", .5), ("F5", .5), ("G5", .5), ("A5", .5), ("C6", .5),
+    ("B5", .5), ("A5", .5), ("G5", .5), ("E5", .5), ("G5", 2),
+    ("A5", .5), ("G5", .5), ("F5", .5), ("E5", .5), ("D5", .5), ("E5", .5), ("F5", .5), ("G5", .5),
+    ("E5", 1), ("C5", 1), ("A4", 2),
+]
+GAME_CHORDS = [("A2", 4), ("F2", 4), ("A2", 4), ("G2", 4), ("C2", 4), ("G2", 4), ("F2", 4), ("E2", 4)]
+
+
+def _music() -> None:
+    MUSIC[SoundEvent.MUSIC_TITLE] = song(TITLE_BPM, TITLE_MELODY, TITLE_CHORDS, "square25", 8)
+    MUSIC[SoundEvent.MUSIC_GAME] = song(GAME_BPM, GAME_MELODY, GAME_CHORDS, "square50", 8)
+
+
+def _jingles() -> None:
+    bpm = 160
+    JINGLES[SoundEvent.LOSE] = mix(
+        voice("square50", bpm, [("G4", .75), ("E4", .75), ("C4", .75), ("G3", 1)], 0.6, decay=0.6),
+        voice("triangle", bpm, [("C3", 2.25), ("C2", 1)], 0.6),
+    )
+    JINGLES[SoundEvent.WIN] = mix(
+        voice("square25", bpm, [("C5", .5), ("E5", .5), ("G5", .5), ("C6", .5), ("E6", 2)], 0.55),
+        voice("square50", bpm, [("R", 2), ("G5", 2)], 0.35),
+        voice("triangle", bpm, [("C3", 2), ("C2", 2)], 0.6),
+    )
+
+
 def build() -> None:
     """Gera todos os sons (uma vez, ao abrir o jogo)."""
     _gameplay_sfx()
+    _music()
+    _jingles()

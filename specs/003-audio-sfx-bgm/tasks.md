@@ -83,14 +83,14 @@ todas as histórias
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T013 [P] [US2] Test in `tests/test_sounds.py`: `MUSIC_TITLE` (120 BPM) and `MUSIC_GAME` (150 BPM) last a whole number of bars and start and end near 0 (loop sem estalo, SC-003); `JINGLES` has `LOSE` and `WIN`, each shorter than 2 s
-- [ ] T014 [P] [US2] Test in `tests/test_flow.py`: `MUSIC_TITLE` on entering the title; `MUSIC_GAME` when the countdown ends; at the end of a game `MUSIC_STOP` then `LOSE` (collision, when the end menu opens) or `WIN` (victory)
+- [X] T013 [P] [US2] Test in `tests/test_sounds.py`: `MUSIC_TITLE` (120 BPM) and `MUSIC_GAME` (150 BPM) last a whole number of bars and start and end near 0 (loop sem estalo, SC-003); `JINGLES` has `LOSE` and `WIN`, each shorter than 2 s
+- [X] T014 [P] [US2] Test in `tests/test_flow.py`: `MUSIC_TITLE` on entering the title; `MUSIC_GAME` when the countdown ends; at the end of a game `MUSIC_STOP` then `LOSE` (collision, when the end menu opens) or `WIN` (victory)
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Compose the two original 3-voice loops (square melody, triangle bass, noise percussion) and the two jingles in `src/snake/sounds.py`
-- [ ] T016 [US2] Emit `MUSIC_TITLE`, `MUSIC_GAME`, `MUSIC_STOP`, `LOSE` and `WIN` from `src/snake/flow.py`
-- [ ] T017 [US2] Play music looped on the reserved channel at `MUSIC_GAIN (0,5) × music/100`, stop it on `MUSIC_STOP`, and play jingles in `src/snake/audio.py`
+- [X] T015 [P] [US2] Compose the two original 3-voice loops (square melody, triangle bass, noise percussion) and the two jingles in `src/snake/sounds.py`
+- [X] T016 [US2] Emit `MUSIC_TITLE`, `MUSIC_GAME`, `MUSIC_STOP`, `LOSE` and `WIN` from `src/snake/flow.py`
+- [X] T017 [US2] Play music looped on the reserved channel at `MUSIC_GAIN (0,5) × music/100`, stop it on `MUSIC_STOP`, and play jingles in `src/snake/audio.py`
 
 **Checkpoint**: `pytest` verde; músicas e jingles tocando nos momentos certos.
 
