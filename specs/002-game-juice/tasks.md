@@ -227,3 +227,7 @@ Task: "flow eat-effect test in tests/test_flow.py (T011)"
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
+
+## Phase 8: Convergence
+
+- [ ] T037 Make the snake's first step happen as soon as the countdown ends, so Restart → first move takes ≤ 3,4 s, in `src/snake/flow.py` per SC-003 (partial)
