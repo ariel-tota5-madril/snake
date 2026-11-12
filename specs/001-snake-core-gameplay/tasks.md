@@ -156,7 +156,7 @@ escolher "Quit" (quickstart.md itens 7 a 10).
 
 - [X] T027 [P] Add a test in `tests/test_core_purity.py` asserting `snake.core` does not import `pygame` (Princípio I)
 - [X] T028 [P] Write `README.md` with setup, `pytest` and `python -m snake` instructions
-- [ ] T029 Run the full quickstart.md validation (pytest + manual checklist items 1–10) and record the result
+- [X] T029 Run the full quickstart.md validation (pytest + manual checklist items 1–10) and record the result
 
 ---
 
