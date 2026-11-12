@@ -112,3 +112,25 @@ def test_name_type_blip_is_short_and_soft():
     samples, volume = sounds.SFX[SoundEvent.NAME_TYPE]
     assert duration_ms(samples) <= 40
     assert volume < sounds.SFX[SoundEvent.EAT][1]
+
+
+# 005 / T024 — sons do placar
+@pytest.mark.parametrize(
+    "event,low,high",
+    [
+        (SoundEvent.ROCKET_IGNITE, 600, 800),
+        (SoundEvent.ROCKET_LAUNCH, 350, 450),
+        (SoundEvent.ROCKET_HIT, 100, 180),
+        (SoundEvent.ROCKET_LAND, 150, 250),
+    ],
+)
+def test_rocket_sounds(event, low, high):
+    samples, volume = sounds.SFX[event]
+    assert low <= duration_ms(samples) <= high
+    assert 0 < volume <= 1
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO
+
+
+def test_first_place_fanfare_is_a_jingle():
+    samples = sounds.JINGLES[SoundEvent.FIRST_PLACE]
+    assert 800 <= duration_ms(samples) <= 2500

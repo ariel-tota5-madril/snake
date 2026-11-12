@@ -149,10 +149,37 @@ def _frenzy_sfx() -> None:
     SFX[SoundEvent.BOOM] = (boom, 1.0)  # carimbo "FEEDING"/"FRENZY": o som mais forte do jogo
 
 
+def _scoreboard_sfx() -> None:
+    """005: ignição, decolagem, impacto, pouso e fanfarra do 1º lugar."""
+    SFX[SoundEvent.ROCKET_IGNITE] = (render([Note("noise", 600, 700, 0.8, freq_end=2500)]), 0.6)
+    SFX[SoundEvent.ROCKET_LAUNCH] = (
+        mix(
+            render([Note("noise", 3000, 400, 0.6, freq_end=9000, decay=1)]),
+            render([Note("square12", 300, 400, 0.5, freq_end=1200, decay=0.8)]),
+        ),
+        0.8,
+    )
+    SFX[SoundEvent.ROCKET_HIT] = (
+        mix(
+            render([Note("noise", 5000, 120, 0.8, freq_end=800, decay=1)]),
+            render([Note("square50", 200, 60, 0.5, decay=1)]),
+        ),
+        0.7,
+    )
+    SFX[SoundEvent.ROCKET_LAND] = (render([Note("triangle", 200, 200, freq_end=80, decay=1)]), 0.8)
+    bpm = 150
+    JINGLES[SoundEvent.FIRST_PLACE] = mix(
+        voice("square25", bpm, [("C5", .5), ("E5", .5), ("G5", .5), ("C6", 2)], 0.55),
+        voice("square50", bpm, [("R", 1.5), ("E5", .5), ("G5", 1.5)], 0.35),
+        voice("triangle", bpm, [("C3", 1.5), ("G2", .5), ("C3", 1.5)], 0.6),
+    )
+
+
 def build() -> None:
     """Gera todos os sons (uma vez, ao abrir o jogo)."""
     _gameplay_sfx()
     _ui_sfx()
     _frenzy_sfx()
+    _scoreboard_sfx()
     _music()
     _jingles()

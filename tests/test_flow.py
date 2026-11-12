@@ -390,7 +390,7 @@ EXPECTED_SOUND_EVENTS = {
     "STEP", "EAT", "PULSE_POP", "CRASH", "COUNT", "GO", "NAV", "CONFIRM", "LOSE", "WIN",
     "VOLUME_PREVIEW", "MUSIC_TITLE", "MUSIC_GAME", "MUSIC_STOP", "MUSIC_DUCK", "MUSIC_UNDUCK",
     "TIMER_TICK", "TIMEOUT_ALARM", "MUSIC_FRENZY", "BOOM",  # 004
-    "NAME_TYPE",  # 005
+    "NAME_TYPE", "ROCKET_IGNITE", "ROCKET_LAUNCH", "ROCKET_HIT", "ROCKET_LAND", "FIRST_PLACE",  # 005
 }
 
 
@@ -1378,3 +1378,45 @@ def test_escape_on_the_scoreboard_is_main_menu():
     flow.escape()
     flow.update(UI_ANIM_MS)
     assert flow.phase is Phase.TITLE_IN
+
+
+
+# T020 — FR-015 e sons do foguete
+def at_scoreboard_animating(score: int = 3) -> Flow:
+    flow = to_playing(Flow(seed=1))
+    flow.game.score = score
+    flow.game.food = (0, 0)
+    while flow.phase is not Phase.MENU:
+        flow.update(50)
+    assert not flow.scoreboard.done
+    flow.drain_sounds()
+    return flow
+
+
+def test_enter_skips_the_animation_then_confirms():
+    flow = at_scoreboard_animating()
+    flow.confirm()
+    assert flow.scoreboard.done and flow.phase is Phase.MENU
+    assert SoundEvent.CONFIRM not in flow.drain_sounds()
+    flow.confirm()
+    assert flow.phase is Phase.MENU_OUT
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+
+
+def test_arrows_are_ignored_during_the_animation():
+    flow = at_scoreboard_animating()
+    flow.direction(Direction.RIGHT)
+    flow.direction(Direction.UP)
+    assert flow.menu.selected is MenuOption.PLAY_AGAIN
+    assert flow.drain_sounds() == []
+
+
+def test_rocket_events_become_sound_events():
+    flow = at_scoreboard_animating()  # placar vazio: 1º lugar, sem subida
+    events = []
+    while not flow.scoreboard.done:
+        flow.update(20)
+        events += flow.drain_sounds()
+    assert events[0] is SoundEvent.ROCKET_IGNITE
+    assert SoundEvent.ROCKET_LAND in events
+    assert events.index(SoundEvent.ROCKET_LAND) < events.index(SoundEvent.FIRST_PLACE)

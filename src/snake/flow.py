@@ -85,6 +85,11 @@ class SoundEvent(Enum):
     MUSIC_FRENZY = "music_frenzy"  # 004: música tensa do Frenzy
     BOOM = "boom"  # 004: impacto de cada palavra da abertura
     NAME_TYPE = "name_type"  # 005: digitar/apagar no nome
+    ROCKET_IGNITE = "rocket_ignite"  # 005: animação do placar
+    ROCKET_LAUNCH = "rocket_launch"
+    ROCKET_HIT = "rocket_hit"
+    ROCKET_LAND = "rocket_land"
+    FIRST_PLACE = "first_place"
 
 
 class Phase(Enum):
@@ -112,7 +117,13 @@ class Phase(Enum):
     NAME_OUT = "name_out"
 
 
-SCOREBOARD_SOUNDS: dict[str, "SoundEvent"] = {}  # preenchido na US3 (eventos do foguete)
+SCOREBOARD_SOUNDS = {  # eventos da animação do placar -> sons (005)
+    "ignite": SoundEvent.ROCKET_IGNITE,
+    "launch": SoundEvent.ROCKET_LAUNCH,
+    "hit": SoundEvent.ROCKET_HIT,
+    "land": SoundEvent.ROCKET_LAND,
+    "first": SoundEvent.FIRST_PLACE,
+}
 ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.NAME_IN}
 LEAVING = {Phase.TITLE_OUT, Phase.MENU_OUT, Phase.PAUSE_OUT, Phase.OPTIONS_OUT, Phase.NAME_OUT}
 ENTRANCE_DONE = {

@@ -41,7 +41,8 @@ BOARD_TOP, ROW_H = 100, 64  # início da área das linhas e altura de cada linha
 BOARD_BG = (28, 32, 44, 235)
 SLIDER_BG = (60, 64, 76)
 SPECIAL_COLORS = ((190, 90, 255), (255, 200, 40))  # 004: roxa ("FEEDING") e dourada ("FRENZY")
-TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1]}
+TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1], "flame": (255, 150, 40)}
+FIRST_PLACE_COLOR = (255, 215, 60)
 GLOW_PERIOD_MS = 1200
 STAMP_WORDS = (("FEEDING", SPECIAL_COLORS[0]), ("FRENZY", (255, 225, 40)))  # roxo e amarelo
 STAMP_OUTLINE = (15, 10, 25)
@@ -361,10 +362,13 @@ def draw_arrow(panel, center, up: bool) -> None:
     pygame.draw.polygon(panel, DIM, [(x, tip), (x - 12 * S, base), (x + 12 * S, base)])
 
 
+NAME_X = 64  # início do nome na linha (x S)
+
+
 def draw_entry(panel, entry, color, y: float, offsets=None) -> None:
     name_offsets = offsets[: len(entry.name)] if offsets else None
     score_offsets = offsets[len(entry.name) :] if offsets else None
-    draw_chars(panel, entry.name, color, 64 * S, y, name_offsets)
+    draw_chars(panel, entry.name, color, NAME_X * S, y, name_offsets)
     draw_chars(panel, str(entry.score), color, (BOARD_W - 18) * S, y, score_offsets, align_right=True)
 
 
@@ -383,9 +387,25 @@ def draw_scoreboard(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) 
     view = board.view_top
     for i in range(len(board.after)):  # números das posições acompanham as linhas
         draw_text(panel, font, f"{i + 1}.", DIM, (34 * S, top + (i - view + 0.5) * row_h))
+    def line_y(y: float) -> float:
+        return top + (y - view + 0.5) * row_h
+
+    rocket_x = NAME_X * S + sum(glyph(ch, HIGHLIGHT).get_width() for ch in board.player.name) / 2
+    for burst in board.bursts:  # chama do foguete, por baixo do nome
+        for p in burst.particles:
+            center = (rocket_x + p.x * row_h, line_y(p.y))
+            radius = max(1, round(7 * S * p.life))
+            color = blend(FLASH_YELLOW, TINTS["flame"], 1 - p.life)
+            pygame.draw.circle(panel, color, center, radius)
     for row in board.rows():
         color = HIGHLIGHT if row.is_player else TEXT
-        draw_entry(panel, row.entry, color, top + (row.y - view + 0.5) * row_h)
+        offsets = None
+        if row.is_player and board.rocket_offset != (0, 0):  # tremor da ignição
+            n = len(row.entry.name) + len(str(row.entry.score))
+            offsets = [board.rocket_offset] * n
+        draw_entry(panel, row.entry, color, line_y(row.y), offsets)
+    for shatter in board.shatters:  # nomes atingidos: letras voando (o expulso cai pela base)
+        draw_entry(panel, shatter.entry, TEXT, line_y(shatter.base_y), shatter.offsets())
     panel.set_clip(None)
     if view > 0.01:
         draw_arrow(panel, (width / 2, top - 10 * S), up=True)
@@ -407,8 +427,24 @@ def draw_scoreboard(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) 
     draw_panel(screen, panel, flow.ui_progress)
 
 
+def draw_first_place(screen: pygame.Surface, flow: Flow) -> None:
+    """ "1ST PLACE!" estampado sobre o placar quando o jogador pousa no 1º lugar (FR-014)."""
+    amount = flow.scoreboard.first_place if flow.scoreboard else 0
+    if amount <= 0 or flow.ui_progress < 1:
+        return
+    label = stamp_label("1ST PLACE!", FIRST_PLACE_COLOR)
+    w, h = label.get_size()
+    scale = 0.62 * (1.4 - 0.4 * amount)  # chega um pouco maior e assenta
+    label = pygame.transform.smoothscale(label, (round(w * scale), round(h * scale)))
+    label.set_alpha(round(255 * min(1.0, amount * 1.5)))
+    cx, cy = screen.get_rect().center
+    below_list = cy - BOARD_H * S / 2 + (BOARD_TOP + VISIBLE_ROWS * ROW_H + 70) * S
+    screen.blit(label, label.get_rect(center=(cx, below_list)))  # no espaço vazio sob a lista
+
+
 def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
     draw_scoreboard(screen, font, flow)
+    draw_first_place(screen, flow)
 
 
 def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font], flow: Flow) -> None:

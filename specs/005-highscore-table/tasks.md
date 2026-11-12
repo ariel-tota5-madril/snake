@@ -92,15 +92,15 @@ FR-010, FR-010a).
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T018 [P] [US3] Write failing tests in `tests/test_scoreboard.py` for `Shatter`: offsets start at 0, spread during the scatter phase, return to 0 at the end of reform while `base_y` goes from `from_y` to `to_y`; expelled shatter falls (dy grows) and fades; done times 650/800 ms; deterministic with the same seed
-- [ ] T019 [US3] Write failing tests in `tests/test_scoreboard.py` for the rocket: starts at the bottom line in IGNITION with jitter and flame bursts, `"ignite"` event; full table → expelled shatter + `"hit"` at ignition; CLIMB after 700 ms with `"launch"`, speed reaches 5 lines/s and stays there; camera: rocket screen position stops at 1.6 while `view_top > 0`, then view stays 0 and the rocket keeps moving at max speed; each passed entry emits `"hit"` when `rocket_y <= k + 0.5` and becomes a shatter to line `k + 1`; LANDING with `"land"`; rank 0 → FIRST_PLACE with `"first"` and `first_place` rising to 1; total ≤ 5 s for the worst case; `skip()` reaches the same final state without extra events; same seed → same animation
-- [ ] T020 [US3] Write failing tests in `tests/test_flow.py`: in MENU, Enter during the animation skips it (no CONFIRM) and a second Enter confirms the option; arrows are ignored during the animation; scoreboard events become `ROCKET_IGNITE`, `ROCKET_LAUNCH`, `ROCKET_HIT`, `ROCKET_LAND`, `FIRST_PLACE` sound events
+- [X] T018 [P] [US3] Write failing tests in `tests/test_scoreboard.py` for `Shatter`: offsets start at 0, spread during the scatter phase, return to 0 at the end of reform while `base_y` goes from `from_y` to `to_y`; expelled shatter falls (dy grows) and fades; done times 650/800 ms; deterministic with the same seed
+- [X] T019 [US3] Write failing tests in `tests/test_scoreboard.py` for the rocket: starts at the bottom line in IGNITION with jitter and flame bursts, `"ignite"` event; full table → expelled shatter + `"hit"` at ignition; CLIMB after 700 ms with `"launch"`, speed reaches 5 lines/s and stays there; camera: rocket screen position stops at 1.6 while `view_top > 0`, then view stays 0 and the rocket keeps moving at max speed; each passed entry emits `"hit"` when `rocket_y <= k + 0.5` and becomes a shatter to line `k + 1`; LANDING with `"land"`; rank 0 → FIRST_PLACE with `"first"` and `first_place` rising to 1; total ≤ 5 s for the worst case; `skip()` reaches the same final state without extra events; same seed → same animation
+- [X] T020 [US3] Write failing tests in `tests/test_flow.py`: in MENU, Enter during the animation skips it (no CONFIRM) and a second Enter confirms the option; arrows are ignored during the animation; scoreboard events become `ROCKET_IGNITE`, `ROCKET_LAUNCH`, `ROCKET_HIT`, `ROCKET_LAND`, `FIRST_PLACE` sound events
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Implement `Shatter` and the rocket timeline, camera, impacts, flame, first place and `skip` in `src/snake/scoreboard.py`
-- [ ] T022 [US3] Wire skip, event draining and the new `SoundEvent` members in `src/snake/flow.py`
-- [ ] T023 [US3] Draw the rocket name (jitter, highlight), flame particles, shattered characters, camera offset and "1ST PLACE!" in `src/snake/app.py`
+- [X] T021 [US3] Implement `Shatter` and the rocket timeline, camera, impacts, flame, first place and `skip` in `src/snake/scoreboard.py`
+- [X] T022 [US3] Wire skip, event draining and the new `SoundEvent` members in `src/snake/flow.py`
+- [X] T023 [US3] Draw the rocket name (jitter, highlight), flame particles, shattered characters, camera offset and "1ST PLACE!" in `src/snake/app.py`
 
 **Checkpoint**: animação completa; `pytest` verde.
 
@@ -112,11 +112,11 @@ FR-010, FR-010a).
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T024 [US4] Write failing tests in `tests/test_sounds.py`: `ROCKET_IGNITE`, `ROCKET_LAUNCH`, `ROCKET_HIT`, `ROCKET_LAND` in `SFX` with durations from research.md §7 and clean edges; `FIRST_PLACE` in `JINGLES`
+- [X] T024 [US4] Write failing tests in `tests/test_sounds.py`: `ROCKET_IGNITE`, `ROCKET_LAUNCH`, `ROCKET_HIT`, `ROCKET_LAND` in `SFX` with durations from research.md §7 and clean edges; `FIRST_PLACE` in `JINGLES`
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Synthesize the rocket sounds and the first-place fanfare in `src/snake/sounds.py`
+- [X] T025 [US4] Synthesize the rocket sounds and the first-place fanfare in `src/snake/sounds.py`
 
 **Checkpoint**: todas as histórias; `pytest` verde.
 
@@ -124,8 +124,8 @@ FR-010, FR-010a).
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T026 [P] Update `README.md` (name entry, highscores file, controls with WASD, Sair)
-- [ ] T027 Measure frame time during the scoreboard animation with the headless drive (SC-004) and render frames to check the layout
+- [X] T026 [P] Update `README.md` (name entry, highscores file, controls with WASD, Sair)
+- [X] T027 Measure frame time during the scoreboard animation with the headless drive (SC-004) and render frames to check the layout
 - [ ] T028 Run the quickstart.md validation (manual, by the user)
 
 ---

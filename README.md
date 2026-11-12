@@ -2,7 +2,7 @@
 
 Jogo Snake em Python, construído com Spec-Driven Development (GitHub Spec Kit).
 Especificações, planos e tarefas por feature em [`specs/`](specs/)
-(001: núcleo do jogo; 002: game juice; 003: áudio, pausa e Opções; 004: Feeding Frenzy);
+(001: núcleo do jogo; 002: game juice; 003: áudio, pausa e Opções; 004: Feeding Frenzy; 005: highscore);
 regras do projeto em [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 
 ## Setup
@@ -24,17 +24,20 @@ pytest
 python -m snake
 ```
 
-Fluxo de telas: **tela inicial** ("Jogar" / "Opções") → **contagem 3, 2, 1** → **partida** →
-ao bater, a tela treme → **menu de fim** ("Restart" / "Opções" / "Quit").
+Fluxo de telas: **tela inicial** ("Jogar" / "Opções" / "Sair") → **seu nome** → **contagem
+3, 2, 1** → **partida** → ao bater, a tela treme → **placar de highscore** ("Jogar de novo" /
+"Tela inicial").
 
-- Setas: mudam a direção da cobra; nos menus, ↑/↓ escolhem a opção; em Opções, ←/→ ajustam o
-  volume.
+- Setas ou WASD: mudam a direção da cobra; nos menus, ↑/↓ escolhem a opção; em Opções, ←/→
+  ajustam o volume; no placar, ↑/↓ rolam e ←/→ escolhem a opção. Na entrada de nome, as letras
+  são digitadas (Backspace apaga, Enter confirma, Esc volta).
 - Input buffer: até 2 direções apertadas em sequência rápida ficam guardadas e são aplicadas uma
   por passo (ex.: ↓ e ← quase juntos fazem a curva completa em vez de perder o segundo comando).
 - Espaço ou Enter: confirmam a opção do menu.
 - Esc: pausa a partida ("Continuar" / "Opções" / "Tela inicial"); na pausa, continua; em Opções,
   volta. Ao continuar, há uma contagem rápida de 1,5 s.
-- "Restart" volta direto para a contagem; "Quit" fecha o jogo.
+- "Jogar de novo" volta direto para a contagem, com o mesmo nome; "Sair" (tela inicial) fecha o
+  jogo.
 
 ## Velocidade e Feeding Frenzy
 
@@ -48,6 +51,14 @@ especiais (roxas e douradas). Você tem **20 s** para comer todas, com a cobra 1
 cronômetro fica vermelho e faz tique. Comeu todas: "SURVIVED!" e a partida volta ao normal, com o
 mesmo tamanho. O tempo acabou: fim de jogo.
 
+## Highscore
+
+Ao fim de cada partida aparece o placar com as **10 melhores** pontuações (nome até 10
+caracteres), salvo em `~/.config/snake/highscores.json`. Se você entra no placar, seu nome vira um
+foguete: treme, decola, explode os nomes que ultrapassa (eles se remontam uma linha abaixo) e
+pousa na posição nova — "1ST PLACE!" no 1º lugar. Enter pula a animação. Arquivo ausente ou
+inválido: o jogo abre com o placar vazio.
+
 ## Áudio
 
 Efeitos e músicas 8-bit são **sintetizados pelo próprio jogo** ao abrir (sem arquivos de som).
@@ -58,6 +69,8 @@ funciona normalmente, em silêncio.
 ## Estrutura
 
 - `src/snake/core.py` — núcleo puro: todas as regras, sem Pygame, sem relógio, RNG injetado.
+- `src/snake/highscores.py` — placar das 10 melhores e persistência em JSON (sem Pygame).
+- `src/snake/scoreboard.py` — animação do placar: foguete, câmera, explosões, rolagem (sem Pygame).
 - `src/snake/frenzy.py` — curva de velocidade, limiares e cronômetro do Feeding Frenzy (sem Pygame).
 - `src/snake/menu.py` — menus (tela inicial, pausa, fim, Opções) sem Pygame.
 - `src/snake/synth.py` — síntese 8-bit: ondas, rampas e mixagem (sem Pygame).
