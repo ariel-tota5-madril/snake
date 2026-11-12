@@ -8,7 +8,7 @@ O adaptador (`app.py`) é o único consumidor. Ele converte o teclado em chamada
 `TITLE_IN`, `TITLE`, `TITLE_OUT`, `COUNTDOWN`, `PLAYING`, `SHAKING`, `MENU_IN`, `MENU`,
 `MENU_OUT`.
 
-## `Flow(seed: int | None = None, width: int = 20, height: int = 20)`
+## `Flow(seed: int | None = None, width: int = 30, height: int = 30)`
 
 Cria o jogo da 001 com `random.Random(seed)` e os efeitos com um RNG separado derivado da seed.
 Começa em `Phase.TITLE_IN`.

@@ -12,9 +12,12 @@ para pixels); origem = casa da cabeça. Offsets do tremor em pixels.
 | `PARTICLE_LIFE_MS` | 600 | FR-001 |
 | `PARTICLES_PER_BURST` | 16 | research §4 |
 | `PULSE_MS` | 300 | FR-002 |
-| `SHAKE_MS` | 400 | FR-004 |
-| `SHAKE_AMPLITUDE_PX` | 8 | research §6 |
+| `PULSE_PEAK_MS` / `PULSE_PEAK` | 60 / 1,8 | FR-002 |
+| `PULSE_DIP_MS` / `PULSE_DIP` | 180 / 0,9 | FR-002 |
+| `COLLISION_SHAKE` | 1/3 de casa, 400 ms | FR-004 |
+| `EAT_SHAKE` | 1/9 de casa, 150 ms | FR-015 |
 | `STEP_MS` | 125 (8 passos/s) | 001 |
+| `GRID` | 30 × 30 casas | FR-014 |
 
 ## Particle
 
@@ -35,18 +38,18 @@ para pixels); origem = casa da cabeça. Offsets do tremor em pixels.
 | Campo | Regra |
 |-------|-------|
 | `elapsed_ms` | `None` quando parado; 0 ao disparar (reinicia se já ativo) |
-| `progress` (derivado) | `elapsed_ms / PULSE_MS`, limitado a 1; ao chegar em 1 volta a parado |
-| `scale` (derivado) | `1 + 0,5·sen(π·progress)`; 1 quando parado |
-| `flash` (derivado) | `1 − progress`; 0 quando parado (0 = cor original, 1 = cor do flash) |
+| `scale` (derivado) | 1,0→1,8 até 60 ms; 1,8→0,9 até 180 ms; 0,9→1,0 até 300 ms; 1 quando parado |
+| `warmth` (derivado) | 0 (branco) → 1 (amarelo) nos primeiros 60 ms; 1 depois; 0 quando parado |
+| `flash` (derivado) | `1 − elapsed_ms / PULSE_MS`; 0 quando parado (força do flash sobre a cor normal) |
 
 ## ScreenShake
 
 | Campo | Regra |
 |-------|-------|
-| `elapsed_ms` | `None` quando parado; 0 ao disparar |
-| `amplitude` (derivado) | `SHAKE_AMPLITUDE_PX · (1 − elapsed_ms / SHAKE_MS)` |
-| `offset` | (dx, dy) sorteados em [−amplitude, amplitude] a cada `update`; (0, 0) quando parado |
-| `done` | `elapsed_ms ≥ SHAKE_MS` |
+| `elapsed_ms`, `duration_ms`, `peak` | definidos em `trigger(amplitude, duration_ms)`; um novo `trigger` substitui o atual |
+| `amplitude` (derivado) | `peak · (1 − elapsed_ms / duration_ms)`, em casas |
+| `offset` | (dx, dy) em casas, sorteados em [−amplitude, amplitude] a cada `update`; (0, 0) quando parado |
+| `done` | `elapsed_ms ≥ duration_ms` |
 
 ## Phase (enum) e Flow
 
@@ -71,8 +74,8 @@ TITLE ──confirm (Espaço/Enter)───────────────
 TITLE_OUT ──phase_ms ≥ UI_ANIM_MS─────────────────────────────► COUNTDOWN
 COUNTDOWN ──phase_ms ≥ COUNTDOWN_MS───────────────────────────► PLAYING
 PLAYING ──a cada STEP_MS: game.step()
-          comeu  → nova ParticleBurst na cabeça + pulse.trigger()
-          GAME_OVER → shake.trigger() ───────────────────────► SHAKING
+          comeu  → nova ParticleBurst na cabeça + pulse.trigger() + shake.trigger(EAT_SHAKE)
+          GAME_OVER → shake.trigger(COLLISION_SHAKE) ────────► SHAKING
           WON ───────────────────────────────────────────────► MENU_IN (sem tremor)
 SHAKING ──shake.done──────────────────────────────────────────► MENU_IN
 MENU_IN ──phase_ms ≥ UI_ANIM_MS, ou qualquer tecla do menu────► MENU (a tecla é aplicada)
@@ -84,4 +87,5 @@ qualquer fase ──quit (fechar janela)─────────────�
 ```
 
 Entradas ignoradas: setas, Espaço e Enter em `TITLE_IN`, `TITLE_OUT`, `COUNTDOWN`, `SHAKING` e
-`MENU_OUT`; Espaço/Enter em `PLAYING`. Partículas e pulso continuam atualizando em todas as fases.
+`MENU_OUT`; Espaço/Enter em `PLAYING`. Partículas, pulso e tremor continuam atualizando em todas
+as fases.

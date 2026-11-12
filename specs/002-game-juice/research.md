@@ -37,17 +37,26 @@ Não havia itens NEEDS CLARIFICATION no Technical Context. Decisões técnicas:
 - **Rationale**: atende FR-001 (≤ 0,6 s) e cabe com folga em 60 fps com 3 explosões (48
   partículas).
 
-## 5. Pulso do placar
+## 5. Pulso do placar ("punchy")
 
-- **Decision**: duração 300 ms; escala = 1 + 0,5·sen(π·p) (cresce e volta); cor interpolada do
-  amarelo (flash) para a cor normal conforme p; um novo pulso reinicia p = 0.
-- **Rationale**: FR-002 e FR-003; termina exatamente na escala 1 e na cor original.
+- **Decision**: duração 300 ms em três trechos: 0–60 ms sobe de 1,0 a 1,8 (ease-out); 60–180 ms
+  desce de 1,8 a 0,9 (ease-in-out); 180–300 ms sobe de 0,9 a 1,0 (ease-out). Cor: `warmth` vai
+  de 0 (branco) a 1 (amarelo) nos primeiros 60 ms; `flash` (força do flash sobre a cor normal)
+  cai de 1 a 0 ao longo dos 300 ms. Um novo pulso reinicia o tempo.
+- **Rationale**: FR-002 revisado — pico em 60 ms, quique a ~0,9× e assentamento exato em 1× e na
+  cor original aos 300 ms; trechos lineares por partes são fáceis de testar em pontos fixos.
+- **Alternatives considered**: mola amortecida (`e^-kt·cos`): bonita, mas não termina exatamente
+  em 1 aos 300 ms sem ajuste fino; o modelo por trechos atende a spec com valores exatos.
 
-## 6. Tremor de tela
+## 6. Tremores de tela (colisão e comer)
 
-- **Decision**: duração 400 ms, amplitude inicial 8 px, decaimento linear até 0; a cada quadro um
-  deslocamento (dx, dy) sorteado em [−a, a] no RNG dos efeitos; ao fim, offset exatamente (0, 0).
-- **Rationale**: FR-004 e SC-002 (volta à posição original).
+- **Decision**: um único `ScreenShake` com `trigger(amplitude, duration_ms)`, em **casas** (o
+  adaptador multiplica pelo tamanho da casa). Colisão: amplitude 1/3 de casa (16 px com casas de
+  48 px; os 8 px de antes com casas de 24 px), 400 ms. Comer: amplitude 1/9 de casa (≈ 5 px, um
+  terço da colisão), 150 ms. Decaimento linear; ao fim, offset exatamente (0, 0). Um novo
+  `trigger` substitui o tremor em andamento (colisão substitui o mini tremor).
+- **Rationale**: FR-004, FR-015, SC-002; um tremor por vez basta e evita somar deslocamentos.
+- **Alternatives considered**: dois objetos de tremor somados (mais estado, sem ganho visível).
 
 ## 7. Animações de UI
 
@@ -56,7 +65,17 @@ Não havia itens NEEDS CLARIFICATION no Technical Context. Decisões técnicas:
   contagem aparecem grandes e encolhem a cada segundo; o placar entra deslizando de cima.
 - **Rationale**: todas ≤ 0,4 s (FR-007, FR-008); uma função de interpolação basta (Princípio IV).
 
-## 8. Fases de tela
+## 8. Tamanho da grade e da janela
+
+- **Decision**: o `Flow` cria o jogo com `width = height = 30`; o adaptador usa `CELL = 48`
+  (janela 1440×1440) e calcula fontes e tamanhos de efeitos a partir de `CELL`
+  (`UI_SCALE = CELL / 24 = 2`).
+- **Rationale**: FR-014; o padrão 20×20 do `Game` continua sendo o da 001 e seus testes não
+  mudam; o jogo da 002 escolhe 30×30 na camada que monta a partida.
+- **Alternatives considered**: mudar o padrão de `Game` para 30×30 (quebraria a spec e os testes
+  da 001 sem necessidade).
+
+## 9. Fases de tela
 
 - **Decision**: enum `Phase` com `TITLE_IN`, `TITLE`, `TITLE_OUT`, `COUNTDOWN`, `PLAYING`,
   `SHAKING`, `MENU_IN`, `MENU`, `MENU_OUT`. O jogo abre em `TITLE_IN`; "Restart" leva de

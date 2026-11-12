@@ -25,17 +25,20 @@ Nenhum tipo do Pygame. Todo tempo entra por `update(dt_ms)`; toda aleatoriedade 
 |--------|--------|
 | `trigger()` | começa (ou reinicia) o pulso |
 | `update(dt_ms)` | avança; ao passar de 300 ms volta a parado |
-| `scale` | 1 parado; > 1 durante o pulso; volta a 1 ao final |
-| `flash` | 0 parado; 1 no disparo; decai até 0 |
+| `scale` | 1 parado; 1,8 aos 60 ms; ~0,9 aos 180 ms; 1 aos 300 ms |
+| `warmth` | 0 (branco) no disparo → 1 (amarelo) aos 60 ms; 0 parado |
+| `flash` | 0 parado; 1 no disparo; decai até 0 aos 300 ms |
 
 ## `ScreenShake(rng: random.Random)`
 
 | Membro | Efeito |
 |--------|--------|
-| `trigger()` | começa o tremor |
+| `trigger(amplitude, duration_ms)` | começa (ou substitui) um tremor; amplitude em casas |
 | `update(dt_ms)` | avança e sorteia um novo `offset` dentro da amplitude atual |
-| `offset` | `(dx, dy)` em px; exatamente `(0, 0)` quando parado ou terminado |
-| `done` | `True` após 400 ms do disparo |
+| `offset` | `(dx, dy)` em casas; exatamente `(0, 0)` quando parado ou terminado |
+| `done` | `True` após `duration_ms` do disparo |
+
+Constantes: `COLLISION_SHAKE = (1/3, 400)`, `EAT_SHAKE = (1/9, 150)`.
 
 ## Garantias
 
