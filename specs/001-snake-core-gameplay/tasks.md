@@ -111,12 +111,12 @@ forma reproduzível.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T024 [P] [US3] Test in `tests/test_score.py`: score starts at 0, goes +1 per food eaten and does not change on moves without food
+- [X] T024 [P] [US3] Test in `tests/test_score.py`: score starts at 0, goes +1 per food eaten and does not change on moves without food
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Increment `score` when food is eaten in `Game.step()` in `src/snake/core.py`
-- [ ] T026 [US3] Render the current score during play and the final score on game over in `src/snake/app.py`
+- [X] T025 [US3] Increment `score` when food is eaten in `Game.step()` in `src/snake/core.py`
+- [X] T026 [US3] Render the current score during play and the final score on game over in `src/snake/app.py`
 
 **Checkpoint**: todas as histórias funcionando; `pytest` verde.
 

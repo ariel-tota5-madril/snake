@@ -93,6 +93,7 @@ class Game:
             self._snake.pop()
             return
 
+        self.score += 1
         self.food = self._spawn_food()
         if self.food is None:
             self.status = Status.WON

@@ -37,10 +37,12 @@ def draw(screen: pygame.Surface, font: pygame.font.Font, game: Game) -> None:
     for i, (x, y) in enumerate(game.snake):
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
         pygame.draw.rect(screen, color, (x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2))
+    score = font.render(f"Pontos: {game.score}", True, TEXT)
+    screen.blit(score, (8, 6))
     if game.status is Status.GAME_OVER:
-        draw_centered(screen, font, "Game Over")
+        draw_centered(screen, font, f"Game Over - {game.score} pontos")
     elif game.status is Status.WON:
-        draw_centered(screen, font, "Você venceu!")
+        draw_centered(screen, font, f"Você venceu! - {game.score} pontos")
     pygame.display.flip()
 
 
