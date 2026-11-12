@@ -155,7 +155,7 @@ branco para amarelo; a tela dá um tremor curto (quickstart.md itens 0 e 5).
 
 - [X] T026 [P] Update `README.md` with the new screen flow (título → contagem → partida → fim)
 - [X] T027 Measure frame time headlessly with 3 simultaneous bursts and confirm it stays within 60 fps (SC-004)
-- [ ] T028 Run the full quickstart.md validation (pytest + manual checklist items 0–9) and record the result
+- [X] T028 Run the full quickstart.md validation (pytest + manual checklist items 0–9) and record the result
 
 ---
 
@@ -230,4 +230,4 @@ Task: "flow eat-effect test in tests/test_flow.py (T011)"
 
 ## Phase 8: Convergence
 
-- [ ] T037 Make the snake's first step happen as soon as the countdown ends, so Restart → first move takes ≤ 3,4 s, in `src/snake/flow.py` per SC-003 (partial)
+- [X] T037 Make the snake's first step happen as soon as the countdown ends, so Restart → first move takes ≤ 3,4 s, in `src/snake/flow.py` per SC-003 (partial)

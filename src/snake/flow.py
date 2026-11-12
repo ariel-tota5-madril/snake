@@ -111,6 +111,8 @@ class Flow:
             self._go(Phase.COUNTDOWN)
         elif self.phase is Phase.COUNTDOWN and self.phase_ms >= COUNTDOWN_MS:
             self._go(Phase.PLAYING)
+            self._step_once()  # a cobra anda assim que a contagem termina (SC-003)
+            self._check_end()
         elif self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
         elif self.phase is Phase.SHAKING and self.shake.done:
@@ -127,12 +129,18 @@ class Flow:
         self._step_elapsed += dt_ms
         while self._step_elapsed >= STEP_MS and self.game.status is Status.RUNNING:
             self._step_elapsed -= STEP_MS
-            score_before = self.game.score
-            self.game.step()
-            if self.game.score > score_before:
-                self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
-                self.pulse.trigger()
-                self.shake.trigger(*EAT_SHAKE)
+            self._step_once()
+        self._check_end()
+
+    def _step_once(self) -> None:
+        score_before = self.game.score
+        self.game.step()
+        if self.game.score > score_before:
+            self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
+            self.pulse.trigger()
+            self.shake.trigger(*EAT_SHAKE)
+
+    def _check_end(self) -> None:
         if self.game.status is Status.GAME_OVER:
             self.shake.trigger(*COLLISION_SHAKE)
             self._go(Phase.SHAKING)

@@ -60,9 +60,17 @@ def test_game_over_leads_to_menu():
     assert flow.menu.selected is MenuOption.RESTART
 
 
+def advance_through_title(flow: Flow) -> Flow:
+    """Passa pela tela inicial e pela contagem sem exigir que a fase PLAYING seja observada."""
+    flow.update(UI_ANIM_MS)
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    return flow
+
+
 def test_win_leads_to_menu():
-    flow = to_playing(Flow(seed=1, width=4, height=1))
-    assert flow.game.food == (3, 0)
+    flow = advance_through_title(Flow(seed=1, width=4, height=1))
+    assert flow.game.food == (3, 0)  # única casa livre: o primeiro passo vence
     for _ in range(1000):
         if flow.phase is Phase.MENU:
             break
@@ -82,11 +90,13 @@ def test_menu_selection_moves_with_up_and_down():
 def test_restart_starts_a_new_game():
     flow = to_menu(to_playing(Flow(seed=1)))
     flow.confirm()
-    to_playing(flow)
+    while flow.phase is not Phase.COUNTDOWN:
+        flow.update(50)
     assert flow.game.status is Status.RUNNING
     assert flow.game.snake == ((15, 15), (14, 15), (13, 15))
     assert flow.game.score == 0
     assert flow.menu is None
+    to_playing(flow)  # e a nova partida de fato começa
 
 
 def test_quit_option_requests_quit():
@@ -118,6 +128,7 @@ def test_flow_keeps_the_same_food_sequence_as_a_bare_game():
         return foods
 
     bare = Game(seed=11, width=30, height=30)  # o jogo da 002 usa grade 30x30 (FR-014)
+    bare.step()  # o Flow dá o primeiro passo assim que a contagem termina (SC-003)
 
     def bare_step(command):
         bare.turn(command)
@@ -186,8 +197,9 @@ def test_game_over_shakes_before_showing_the_menu():
 
 
 def test_win_goes_to_menu_without_shaking():
-    flow = to_playing(Flow(seed=1, width=4, height=1))
-    flow.update(STEP_MS)
+    flow = advance_through_title(Flow(seed=1, width=4, height=1))
+    while flow.game.status is Status.RUNNING:
+        flow.update(50)
     assert flow.game.status is Status.WON
     assert flow.phase is not Phase.SHAKING
     assert flow.menu is not None
@@ -342,3 +354,18 @@ def test_collision_right_after_eating_replaces_mini_shake():
     assert flow.shake.amplitude > EAT_SHAKE[0]
     flow.update(EAT_SHAKE[1] + 50)  # o mini tremor já teria acabado
     assert flow.phase is Phase.SHAKING and not flow.shake.done
+
+
+# T037 (SC-003) — Restart até a cobra andar em no máximo 3,4 s
+def test_restart_to_first_move_within_3_4_seconds():
+    flow = to_menu(to_playing(Flow(seed=1)))
+    flow.confirm()
+    elapsed, head = 0, None
+    while elapsed <= 5000:
+        flow.update(10)
+        elapsed += 10
+        if head is None and flow.phase is Phase.COUNTDOWN:
+            head = flow.game.snake[0]
+        if head is not None and flow.game.snake[0] != head:
+            break
+    assert elapsed <= 3400
