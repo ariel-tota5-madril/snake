@@ -8,6 +8,12 @@
 
 **Input**: User description: "game juice - vamos adicionar particulas na ponta da cobra ao colher frutas, adicionar uma animação de pulse no score com flash de cor no número, camera shake ao colidir e ter game over, animação de entrada e saida da UI, tanto no início do jogo, como na janela de end game"
 
+## Clarifications
+
+### Session 2026-11-12
+
+- Q: O que aparece na tela por trás da tela inicial e durante a contagem regressiva: o tabuleiro com a cobra parada e a comida, ou um fundo vazio? → A: Tabuleiro sempre visível: escurecido atrás da tela inicial; na contagem, cobra parada e comida já posicionada.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Recompensa visual ao comer (Priority: P1)
@@ -72,12 +78,14 @@ entrada e saída em cada transição.
 
 1. **Given** o jogo acabou de abrir, **When** a primeira tela aparece, **Then** surge uma tela
    inicial com o título "Snake" e a instrução "Pressione Espaço para começar", entrando com
-   animação de até 0,4 s; a cobra ainda não anda.
+   animação de até 0,4 s, sobre o tabuleiro escurecido (cobra na posição inicial e comida já
+   posicionada); a cobra ainda não anda.
 2. **Given** a tela inicial visível, **When** o jogador pressiona Espaço ou Enter, **Then** a
    tela inicial sai com animação de até 0,4 s e começa a contagem regressiva.
 3. **Given** a contagem regressiva começou, **When** ela avança, **Then** os números "3", "2" e
-   "1" aparecem animados no centro, um por segundo, o placar entra com animação, e só depois do
-   "1" a cobra começa a andar.
+   "1" aparecem animados no centro, um por segundo, sobre o tabuleiro visível com a cobra parada
+   e a comida já no lugar; o placar entra com animação, e só depois do "1" a cobra começa a
+   andar.
 4. **Given** a contagem regressiva em andamento, **When** o jogador pressiona as setas, Espaço
    ou Enter, **Then** nada acontece (a cobra só aceita comandos depois da contagem).
 5. **Given** a partida terminou, **When** a janela de fim de partida aparece, **Then** ela entra
@@ -121,11 +129,13 @@ entrada e saída em cada transição.
 - **FR-006**: A janela de fim de partida DEVE aparecer só depois que o tremor de colisão
   terminar.
 - **FR-007**: Ao abrir o jogo, DEVE ser exibida uma tela inicial com o título "Snake" e a
-  instrução "Pressione Espaço para começar", com animação de entrada de até 0,4 s; Espaço ou
-  Enter DEVEM fechá-la com animação de saída de até 0,4 s.
+  instrução "Pressione Espaço para começar", com animação de entrada de até 0,4 s, sobre o
+  tabuleiro da partida escurecido (cobra parada na posição inicial e comida posicionada); Espaço
+  ou Enter DEVEM fechá-la com animação de saída de até 0,4 s.
 - **FR-012**: Antes de toda partida (depois da tela inicial e depois de cada "Restart"), DEVE
   haver uma contagem regressiva animada "3", "2", "1", um número por segundo, enquanto o placar
-  entra com animação; a cobra só começa a andar depois do "1".
+  entra com animação; durante a contagem o tabuleiro fica visível com a cobra parada e a comida
+  já posicionada, e a cobra só começa a andar depois do "1".
 - **FR-013**: Durante a contagem regressiva, setas, Espaço e Enter NÃO DEVEM ter efeito.
 - **FR-008**: A janela de fim de partida DEVE entrar com animação de até 0,4 s e, ao confirmar
   "Restart", sair com animação de até 0,4 s antes da nova partida.
