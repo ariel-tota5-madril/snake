@@ -32,6 +32,21 @@ Enumeração: `RUNNING`, `GAME_OVER`, `WON`.
 - A comida nunca coincide com uma casa da cobra.
 - As casas da cobra são todas distintas.
 
+## MenuOption
+
+Enumeração: `RESTART`, `QUIT`.
+
+## EndMenu (menu de fim de partida)
+
+| Campo | Tipo | Regra |
+|-------|------|-------|
+| `options` | sequência de MenuOption | sempre `(RESTART, QUIT)`, nessa ordem |
+| `selected` | MenuOption | começa em `RESTART` (FR-014) |
+
+- `move_up()` / `move_down()`: movem a seleção uma posição; nas pontas não fazem nada (sem volta
+  circular).
+- `confirm()`: devolve a opção selecionada; quem chama decide o efeito (FR-015).
+
 ## Transições de estado
 
 ```text
@@ -40,7 +55,12 @@ RUNNING ──step(): cabeça entraria no corpo───────────
 RUNNING ──step(): comeu e não há casa livre p/ comida──► WON
 RUNNING ──step(): demais casos─────────────────────────► RUNNING
 GAME_OVER / WON ──step() ou turn()─────────────────────► sem mudança (FR-013)
+GAME_OVER / WON ──restart()────────────────────────────► RUNNING (estado inicial, score 0)
 ```
+
+Fluxo no adaptador ao fim da partida: cria um `EndMenu`; ↑/↓ chamam `move_up()`/`move_down()`;
+Espaço/Enter chamam `confirm()` → `RESTART` chama `game.restart()`, `QUIT` fecha o jogo.
+Com `status == RUNNING`, Espaço/Enter são ignorados (FR-016).
 
 ## Passo de jogo (`step`), em ordem
 

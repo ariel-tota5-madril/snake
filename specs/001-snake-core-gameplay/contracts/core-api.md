@@ -26,6 +26,7 @@ Game(width: int = 20, height: int = 20, rng: random.Random | None = None, seed: 
 |--------|--------|
 | `turn(direction: Direction) -> None` | registra a direção para o próximo passo; ignora a oposta à atual e qualquer comando depois do primeiro válido no mesmo passo; sem efeito fora de `RUNNING` |
 | `step() -> None` | avança um passo, seguindo a ordem de `data-model.md` |
+| `restart() -> None` | volta ao estado inicial (cobra, direção, score 0, `RUNNING`) e gera nova comida usando o mesmo RNG |
 
 ### Consultas (somente leitura)
 
@@ -38,9 +39,23 @@ Game(width: int = 20, height: int = 20, rng: random.Random | None = None, seed: 
 | `score` | int | pontuação atual |
 | `status` | Status | situação da partida |
 
+## `snake.menu`
+
+- `MenuOption` — enum com `RESTART`, `QUIT`.
+- `EndMenu()` — cria o menu com `selected == RESTART`.
+
+| Membro | Efeito |
+|--------|--------|
+| `options` | `(MenuOption.RESTART, MenuOption.QUIT)` |
+| `selected` | opção selecionada |
+| `move_up()` / `move_down()` | move a seleção; sem efeito nas pontas |
+| `confirm() -> MenuOption` | devolve a opção selecionada |
+
 ## Garantias
 
 - Mesma seed + mesma sequência de `turn`/`step` → mesma sequência de estados (FR-008, SC-004).
 - Enquanto `status == RUNNING`: exatamente uma comida, fora da cobra (FR-006, SC-002).
 - `score` == número de comidas comidas (FR-009, SC-003).
 - Fora de `RUNNING`, `turn` e `step` não alteram nenhum atributo (FR-013).
+- Depois de `restart()`, o estado é igual ao de uma partida nova (FR-002), com o RNG continuando
+  de onde estava.
