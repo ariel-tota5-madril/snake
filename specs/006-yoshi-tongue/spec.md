@@ -16,6 +16,11 @@
 - Q: Quanto tempo de recarga? → A: 8 s.
 - Q: A língua funciona no Feeding Frenzy? → A: Não: durante o Frenzy a língua fica bloqueada e o
   ícone aparece acinzentado.
+- Q: Errar o disparo também gasta a recarga? → A: Sim: todo disparo, acertando ou não, gasta a
+  recarga inteira de 8 s.
+- Q: Qual tecla dispara a língua? → A: Espaço.
+- Q: Onde fica o ícone da língua? → A: Canto inferior esquerdo, fixo, com cerca de duas casas de
+  tamanho.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -38,7 +43,7 @@ ver a fruta ser comida sem a cobra chegar nela; apertar de novo logo depois e na
    numa coleta normal.
 2. **Given** a língua disponível e nenhuma fruta ao alcance na linha à frente, **When** o jogador
    aperta o botão, **Then** a língua se estica até o alcance máximo (ou até bater na parede ou no
-   corpo) e volta vazia.
+   corpo), volta vazia e a recarga de 8 s começa do mesmo jeito.
 3. **Given** a língua foi usada, **When** o jogador aperta o botão de novo durante a recarga,
    **Then** nada acontece.
 4. **Given** a fruta está à frente, mas há parte do corpo da cobra entre a cabeça e ela, **When**
@@ -109,8 +114,8 @@ Disparar a língua tem um som próprio (um "tchum" elástico); comer pela língu
 
 ### Functional Requirements
 
-- **FR-001**: Durante a partida, um botão DEVE disparar a língua na direção em que a cabeça está
-  andando, se a língua estiver disponível.
+- **FR-001**: Durante a partida, a tecla Espaço DEVE disparar a língua na direção em que a cabeça
+  está andando, se a língua estiver disponível; nos menus, Espaço continua confirmando.
 - **FR-002**: Se houver fruta ao alcance nessa linha, sem parede ou corpo da cobra no caminho, ela
   DEVE ser comida como numa coleta normal (placar, crescimento, efeitos e sons de coleta).
 - **FR-003**: O alcance da língua DEVE ser de 3 casas à frente da cabeça.
@@ -122,8 +127,9 @@ Disparar a língua tem um som próprio (um "tchum" elástico); comer pela língu
   a mostrar o estado real (pronto ou recarregando).
 - **FR-006**: A língua DEVE aparecer esticando e voltando (ida e volta em até 0,3 s), sem parar a
   partida; a fruta acertada é puxada junto na volta.
-- **FR-007**: Um ícone da língua DEVE ficar visível durante a partida, num canto da tela que não
-  cubra o placar nem o cronômetro do Frenzy.
+- **FR-007**: Um ícone da língua DEVE ficar visível durante a partida, fixo no canto inferior
+  esquerdo da tela, com cerca de duas casas de tamanho (sem cobrir o placar nem o cronômetro do
+  Frenzy).
 - **FR-008**: Durante a recarga, o ícone DEVE ficar apagado com uma fatia iluminada em forma de
   relógio (sentido horário, a partir do topo) proporcional ao progresso; sem números.
 - **FR-009**: Ao fim da recarga, o ícone DEVE dar um pulso e tocar um som de "pronto".
@@ -154,9 +160,6 @@ Disparar a língua tem um som próprio (um "tchum" elástico); comer pela língu
 
 ## Assumptions
 
-- O botão é a **barra de espaço** durante a partida (hoje ela não faz nada na partida); nos menus,
-  espaço continua confirmando.
-- O ícone fica no canto inferior esquerdo, em tamanho de cerca de duas casas.
 - A fruta é comida no instante do disparo (a regra é decidida na hora); a animação de ida e volta
   é só visual, o que mantém a resposta imediata (SC-001).
 - A língua atravessa casas vazias e para na primeira parede ou parte do corpo.
