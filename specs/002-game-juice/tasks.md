@@ -133,17 +133,17 @@ branco para amarelo; a tela dá um tremor curto (quickstart.md itens 0 e 5).
 > contradizem a spec revisada (amplitude do tremor em px; cobra inicial em (10,10) no `Flow`) DEVEM
 > ser atualizados nesta fase, pois a spec mudou.
 
-- [ ] T029 [P] [US1] Test in `tests/test_juice.py`: `ScorePulse` "punchy" — `scale == 1.8` at 60 ms, about 0.9 at 180 ms (the minimum), `scale == 1` and `flash == 0` at 300 ms; `warmth` goes 0 → 1 in the first 60 ms
-- [ ] T030 [P] [US2] Rewrite shake tests in `tests/test_juice.py` for `ScreenShake.trigger(amplitude, duration_ms)` in cells: offset within the decaying amplitude, `done` with `offset == (0, 0)` at `duration_ms`; a new `trigger` replaces the running shake; `EAT_SHAKE` amplitude is a third of `COLLISION_SHAKE` and lasts 150 ms
-- [ ] T031 [US1] Test in `tests/test_flow.py`: eating starts the eat shake (≤ 150 ms, then offset back to `(0, 0)`); colliding right after eating replaces it with the collision shake
-- [ ] T032 Test in `tests/test_flow.py`: `Flow()` uses a 30 × 30 grid and the snake starts at `((15, 15), (14, 15), (13, 15))`; update `test_restart_starts_a_new_game` to the 30 × 30 start
+- [X] T029 [P] [US1] Test in `tests/test_juice.py`: `ScorePulse` "punchy" — `scale == 1.8` at 60 ms, about 0.9 at 180 ms (the minimum), `scale == 1` and `flash == 0` at 300 ms; `warmth` goes 0 → 1 in the first 60 ms
+- [X] T030 [P] [US2] Rewrite shake tests in `tests/test_juice.py` for `ScreenShake.trigger(amplitude, duration_ms)` in cells: offset within the decaying amplitude, `done` with `offset == (0, 0)` at `duration_ms`; a new `trigger` replaces the running shake; `EAT_SHAKE` amplitude is a third of `COLLISION_SHAKE` and lasts 150 ms
+- [X] T031 [US1] Test in `tests/test_flow.py`: eating starts the eat shake (≤ 150 ms, then offset back to `(0, 0)`); colliding right after eating replaces it with the collision shake
+- [X] T032 Test in `tests/test_flow.py`: `Flow()` uses a 30 × 30 grid and the snake starts at `((15, 15), (14, 15), (13, 15))`; update `test_restart_starts_a_new_game` to the 30 × 30 start
 
 ### Implementation
 
-- [ ] T033 [US1] Rework `ScorePulse` in `src/snake/juice.py`: three-segment scale (1.0→1.8 by 60 ms, →0.9 by 180 ms, →1.0 by 300 ms) and `warmth` (0→1 in 60 ms)
-- [ ] T034 [US2] Make `ScreenShake` parametric in `src/snake/juice.py`: `trigger(amplitude, duration_ms)` in cells; constants `COLLISION_SHAKE = (1/3, 400)` and `EAT_SHAKE = (1/9, 150)`
-- [ ] T035 [US1] In `src/snake/flow.py`: default grid 30 × 30; trigger `EAT_SHAKE` on eating and `COLLISION_SHAKE` on game over; update the shake every frame in all phases
-- [ ] T036 In `src/snake/app.py`: `CELL = 48` (1440 × 1440 window), scale fonts, particles and score position by `CELL / 24`; shake offset multiplied by `CELL`; score flash blends white → yellow by `warmth`
+- [X] T033 [US1] Rework `ScorePulse` in `src/snake/juice.py`: three-segment scale (1.0→1.8 by 60 ms, →0.9 by 180 ms, →1.0 by 300 ms) and `warmth` (0→1 in 60 ms)
+- [X] T034 [US2] Make `ScreenShake` parametric in `src/snake/juice.py`: `trigger(amplitude, duration_ms)` in cells; constants `COLLISION_SHAKE = (1/3, 400)` and `EAT_SHAKE = (1/9, 150)`
+- [X] T035 [US1] In `src/snake/flow.py`: default grid 30 × 30; trigger `EAT_SHAKE` on eating and `COLLISION_SHAKE` on game over; update the shake every frame in all phases
+- [X] T036 In `src/snake/app.py`: `CELL = 48` (1440 × 1440 window), scale fonts, particles and score position by `CELL / 24`; shake offset multiplied by `CELL`; score flash blends white → yellow by `warmth`
 
 **Checkpoint**: `pytest` verde; janela 1440×1440, pulso punchy e mini tremor ao comer.
 

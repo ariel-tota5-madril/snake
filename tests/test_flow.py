@@ -84,7 +84,7 @@ def test_restart_starts_a_new_game():
     flow.confirm()
     to_playing(flow)
     assert flow.game.status is Status.RUNNING
-    assert flow.game.snake == ((10, 10), (9, 10), (8, 10))
+    assert flow.game.snake == ((15, 15), (14, 15), (13, 15))
     assert flow.game.score == 0
     assert flow.menu is None
 
@@ -117,7 +117,7 @@ def test_flow_keeps_the_same_food_sequence_as_a_bare_game():
             foods.append(game.food)
         return foods
 
-    bare = Game(seed=11)
+    bare = Game(seed=11, width=30, height=30)  # o jogo da 002 usa grade 30x30 (FR-014)
 
     def bare_step(command):
         bare.turn(command)
@@ -302,3 +302,43 @@ def test_ui_progress_by_phase():
     assert flow.ui_progress == 1  # TITLE_OUT começa cheio
     flow.update(UI_ANIM_MS / 2)
     assert 0 < flow.ui_progress < 1
+
+
+
+# --- incremento pós-clarificação (FR-014, FR-015) ----------------------------------------
+
+from snake.juice import COLLISION_SHAKE, EAT_SHAKE  # noqa: E402
+
+
+# T032
+def test_flow_uses_30x30_grid():
+    flow = Flow(seed=1)
+    assert (flow.game.width, flow.game.height) == (30, 30)
+    assert flow.game.snake == ((15, 15), (14, 15), (13, 15))
+
+
+# T031
+def test_eating_starts_a_short_mini_shake():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    assert flow.game.score == 1
+    assert not flow.shake.done
+    assert 0 < flow.shake.amplitude <= EAT_SHAKE[0]
+    flow.game.food = (0, 0)
+    flow.update(EAT_SHAKE[1])
+    assert flow.shake.done and flow.shake.offset == (0, 0)
+
+
+def test_collision_right_after_eating_replaces_mini_shake():
+    flow = to_playing(Flow(seed=1))
+    flow.game._snake = [(28, 15), (27, 15), (26, 15)]
+    flow.game.food = (29, 15)  # come na última coluna e bate no passo seguinte
+    flow.update(STEP_MS)
+    assert flow.game.score == 1
+    flow.update(STEP_MS)
+    assert flow.phase is Phase.SHAKING
+    assert flow.shake.amplitude > EAT_SHAKE[0]
+    flow.update(EAT_SHAKE[1] + 50)  # o mini tremor já teria acabado
+    assert flow.phase is Phase.SHAKING and not flow.shake.done

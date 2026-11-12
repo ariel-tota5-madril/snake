@@ -8,12 +8,13 @@ import random
 from enum import Enum
 
 from snake.core import Direction, Game, Status
-from snake.juice import ParticleBurst, ScorePulse, ScreenShake, ease_out
+from snake.juice import COLLISION_SHAKE, EAT_SHAKE, ParticleBurst, ScorePulse, ScreenShake, ease_out
 from snake.menu import EndMenu, MenuOption
 
 STEP_MS = 125  # 8 passos por segundo (001)
 UI_ANIM_MS = 300
 COUNTDOWN_MS = 3000
+GRID = 30  # grade 30x30 (FR-014); o padrão 20x20 do núcleo continua sendo o da 001
 
 
 class Phase(Enum):
@@ -38,7 +39,7 @@ TIMED_UI = {
 
 
 class Flow:
-    def __init__(self, seed: int | None = None, width: int = 20, height: int = 20) -> None:
+    def __init__(self, seed: int | None = None, width: int = GRID, height: int = GRID) -> None:
         self.game = Game(width=width, height=height, rng=random.Random(seed))
         # RNG separado: efeitos não consomem números do jogo (SC-005), mas seguem a seed (FR-011)
         self._fx_rng = random.Random(f"juice-{seed}")
@@ -112,16 +113,15 @@ class Flow:
             self._go(Phase.PLAYING)
         elif self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
-        elif self.phase is Phase.SHAKING:
-            self.shake.update(dt_ms)
-            if self.shake.done:
-                self._open_menu()
+        elif self.phase is Phase.SHAKING and self.shake.done:
+            self._open_menu()
 
     def _update_effects(self, dt_ms: float) -> None:
         for burst in self.bursts:
             burst.update(dt_ms)
         self.bursts = [b for b in self.bursts if not b.done]
         self.pulse.update(dt_ms)
+        self.shake.update(dt_ms)
 
     def _update_playing(self, dt_ms: float) -> None:
         self._step_elapsed += dt_ms
@@ -132,8 +132,9 @@ class Flow:
             if self.game.score > score_before:
                 self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
                 self.pulse.trigger()
+                self.shake.trigger(*EAT_SHAKE)
         if self.game.status is Status.GAME_OVER:
-            self.shake.trigger()
+            self.shake.trigger(*COLLISION_SHAKE)
             self._go(Phase.SHAKING)
         elif self.game.status is Status.WON:
             self._open_menu()

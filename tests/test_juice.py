@@ -1,6 +1,8 @@
 import random
 
-from snake.juice import SHAKE_AMPLITUDE_PX, ParticleBurst, ScorePulse, ScreenShake, ease_out
+import pytest
+
+from snake.juice import COLLISION_SHAKE, EAT_SHAKE, ParticleBurst, ScorePulse, ScreenShake, ease_out
 
 
 # T008
@@ -55,11 +57,12 @@ def test_score_pulse_restarts_when_triggered_mid_pulse():
     assert pulse.scale > 1  # se não reiniciasse, já teria terminado (350 ms > 300 ms)
 
 
-# T015
+# T015 / T030 — tremor configurável, em casas
 def test_screen_shake_stays_within_decaying_amplitude_and_ends_at_origin():
     shake = ScreenShake(random.Random(3))
     assert shake.offset == (0, 0)
-    shake.trigger()
+    amplitude, duration = COLLISION_SHAKE
+    shake.trigger(amplitude, duration)
     amplitudes = []
     for _ in range(7):  # 7 x 50 ms = 350 ms
         shake.update(50)
@@ -69,7 +72,7 @@ def test_screen_shake_stays_within_decaying_amplitude_and_ends_at_origin():
         assert abs(dx) <= limit and abs(dy) <= limit
         assert not shake.done
     assert amplitudes == sorted(amplitudes, reverse=True)
-    assert amplitudes[0] <= SHAKE_AMPLITUDE_PX
+    assert amplitudes[0] <= amplitude
     shake.update(50)  # 400 ms
     assert shake.done
     assert shake.offset == (0, 0)
@@ -77,9 +80,59 @@ def test_screen_shake_stays_within_decaying_amplitude_and_ends_at_origin():
 
 def test_screen_shake_is_deterministic_for_equal_seeds():
     a, b = ScreenShake(random.Random(9)), ScreenShake(random.Random(9))
-    a.trigger(); b.trigger()
+    a.trigger(*COLLISION_SHAKE)
+    b.trigger(*COLLISION_SHAKE)
     offsets = []
     for _ in range(5):
-        a.update(40); b.update(40)
+        a.update(40)
+        b.update(40)
         offsets.append((a.offset, b.offset))
     assert all(x == y for x, y in offsets)
+
+
+def test_eat_shake_is_a_third_of_collision_and_lasts_150ms():
+    assert EAT_SHAKE[0] == pytest.approx(COLLISION_SHAKE[0] / 3)
+    assert EAT_SHAKE[1] == 150
+    shake = ScreenShake(random.Random(1))
+    shake.trigger(*EAT_SHAKE)
+    shake.update(149)
+    assert not shake.done
+    shake.update(1)
+    assert shake.done and shake.offset == (0, 0)
+
+
+def test_new_trigger_replaces_running_shake():
+    shake = ScreenShake(random.Random(1))
+    shake.trigger(*EAT_SHAKE)
+    shake.update(100)
+    shake.trigger(*COLLISION_SHAKE)
+    shake.update(100)  # 200 ms no total; o tremor de comer já teria acabado
+    assert not shake.done
+    assert shake.amplitude > EAT_SHAKE[0]
+
+
+# T029 — pulso "punchy"
+def test_score_pulse_punchy_curve():
+    pulse = ScorePulse()
+    pulse.trigger()
+    assert pulse.warmth == 0  # começa branco
+    pulse.update(60)
+    assert pulse.scale == pytest.approx(1.8)
+    assert pulse.warmth == 1  # já amarelo
+    pulse.update(120)  # 180 ms
+    assert pulse.scale == pytest.approx(0.9)
+    pulse.update(60)  # 240 ms
+    assert 0.9 < pulse.scale < 1
+    pulse.update(60)  # 300 ms
+    assert (pulse.scale, pulse.flash, pulse.warmth) == (1, 0, 0)
+
+
+def test_score_pulse_minimum_is_the_dip():
+    pulse = ScorePulse()
+    pulse.trigger()
+    scales = []
+    for _ in range(29):
+        pulse.update(10)
+        scales.append(pulse.scale)
+    assert max(scales) == pytest.approx(1.8)
+    assert min(scales) == pytest.approx(0.9)

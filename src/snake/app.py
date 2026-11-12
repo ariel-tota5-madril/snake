@@ -3,13 +3,16 @@
 Nenhuma regra de jogo nem regra de tela vive aqui (Princípio I da constituição).
 """
 
+from functools import cache
+
 import pygame
 
 from snake.core import Direction, Status
 from snake.flow import UI_ANIM_MS, Flow, Phase
 from snake.juice import ease_out
 
-CELL = 24
+CELL = 48  # grade 30x30 -> janela 1440x1440 (FR-014)
+S = CELL / 24  # escala da interface em relação ao tamanho original (24 px por casa)
 FPS = 60
 BACKGROUND = (20, 24, 32)
 SNAKE_HEAD = (120, 220, 120)
@@ -18,7 +21,8 @@ FOOD = (230, 90, 70)
 TEXT = (240, 240, 240)
 DIM = (140, 140, 150)
 HIGHLIGHT = (250, 210, 90)
-FLASH = (255, 220, 60)
+FLASH_WHITE = (255, 255, 255)
+FLASH_YELLOW = (255, 220, 60)
 PARTICLE = (255, 170, 80)
 OVERLAY_ALPHA = 170
 TITLE_PHASES = {Phase.TITLE_IN, Phase.TITLE, Phase.TITLE_OUT}
@@ -43,10 +47,18 @@ def draw_board(screen: pygame.Surface, flow: Flow) -> None:
     screen.fill(BACKGROUND)
     if game.food is not None:
         fx, fy = game.food
-        pygame.draw.rect(screen, FOOD, (fx * CELL + 3, fy * CELL + 3, CELL - 6, CELL - 6))
+        pad = round(3 * S)
+        pygame.draw.rect(screen, FOOD, (fx * CELL + pad, fy * CELL + pad, CELL - 2 * pad, CELL - 2 * pad))
     for i, (x, y) in enumerate(game.snake):
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
-        pygame.draw.rect(screen, color, (x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2))
+        gap = round(S)
+        pygame.draw.rect(screen, color, (x * CELL + gap, y * CELL + gap, CELL - 2 * gap, CELL - 2 * gap))
+
+
+@cache
+def surface(size: tuple[int, int], alpha: bool) -> pygame.Surface:
+    """Superfícies do tamanho da tela reaproveitadas entre quadros (criar 1440x1440 por quadro custa caro)."""
+    return pygame.Surface(size, pygame.SRCALPHA) if alpha else pygame.Surface(size)
 
 
 def blend(a, b, t: float):
@@ -54,10 +66,13 @@ def blend(a, b, t: float):
 
 
 def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
-    layer = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    if not flow.bursts:
+        return
+    layer = surface(screen.get_size(), True)
+    layer.fill((0, 0, 0, 0))
     for burst in flow.bursts:
         for p in burst.particles:
-            radius = max(1, round(4 * p.life))
+            radius = max(1, round(4 * S * p.life))
             center = ((p.x + 0.5) * CELL, (p.y + 0.5) * CELL)
             pygame.draw.circle(layer, (*PARTICLE, round(255 * p.life)), center, radius)
     screen.blit(layer, (0, 0))
@@ -66,19 +81,23 @@ def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
 def score_y(flow: Flow) -> float:
     """O placar fica escondido na tela inicial e entra deslizando de cima no começo da contagem."""
     if flow.phase in TITLE_PHASES:
-        return -30
+        return -30 * S
     if flow.phase is Phase.COUNTDOWN:
-        return -30 + 48 * ease_out(flow.phase_ms / UI_ANIM_MS)
-    return 18
+        return (-30 + 48 * ease_out(flow.phase_ms / UI_ANIM_MS)) * S
+    return 18 * S
 
 
 def draw_score(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
     pulse = flow.pulse
-    label = font.render(f"Pontos: {flow.game.score}", True, blend(TEXT, FLASH, pulse.flash))
+    flash_color = blend(FLASH_WHITE, FLASH_YELLOW, pulse.warmth)
+    label = font.render(f"Pontos: {flow.game.score}", True, blend(TEXT, flash_color, pulse.flash))
     if pulse.scale != 1:
         w, h = label.get_size()
         label = pygame.transform.smoothscale(label, (round(w * pulse.scale), round(h * pulse.scale)))
-    screen.blit(label, label.get_rect(midleft=(8, score_y(flow))))
+    rect = label.get_rect(midleft=(8 * S, score_y(flow)))
+    if flow.phase not in TITLE_PHASES and rect.top < 4 * S:
+        rect.top = round(4 * S)  # o pico do pulso (1,8x) não pode sair pela borda de cima
+    screen.blit(label, rect)
 
 
 def draw_panel(screen: pygame.Surface, panel: pygame.Surface, progress: float) -> None:
@@ -99,14 +118,14 @@ def lines_panel(font: pygame.font.Font, lines: list[tuple[str, tuple]], size) ->
     panel = pygame.Surface(size, pygame.SRCALPHA)
     cx = size[0] / 2
     for i, (text, color) in enumerate(lines):
-        draw_text(panel, font, text, color, (cx, 20 + i * 36))
+        draw_text(panel, font, text, color, (cx, (20 + i * 36) * S))
     return panel
 
 
 def draw_title(screen: pygame.Surface, big: pygame.font.Font, font: pygame.font.Font, flow: Flow) -> None:
-    panel = pygame.Surface((420, 140), pygame.SRCALPHA)
-    draw_text(panel, big, "Snake", SNAKE_HEAD, (210, 45))
-    draw_text(panel, font, "Pressione Espaço para começar", TEXT, (210, 110))
+    panel = pygame.Surface((round(420 * S), round(140 * S)), pygame.SRCALPHA)
+    draw_text(panel, big, "Snake", SNAKE_HEAD, (210 * S, 45 * S))
+    draw_text(panel, font, "Pressione Espaço para começar", TEXT, (210 * S, 110 * S))
     draw_panel(screen, panel, flow.ui_progress)
 
 
@@ -127,16 +146,17 @@ def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) ->
         selected = option is flow.menu.selected
         label = f"> {option.value} <" if selected else option.value
         lines.append((label, HIGHLIGHT if selected else DIM))
-    draw_panel(screen, lines_panel(font, lines, (360, 180)), flow.ui_progress)
+    draw_panel(screen, lines_panel(font, lines, (round(360 * S), round(180 * S))), flow.ui_progress)
 
 
 def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font], flow: Flow) -> None:
     font, big = fonts
-    world = pygame.Surface(screen.get_size())
+    world = surface(screen.get_size(), False)
     draw_board(world, flow)
     draw_particles(world, flow)
     screen.fill(BACKGROUND)
-    screen.blit(world, flow.shake.offset)
+    dx, dy = flow.shake.offset  # em casas
+    screen.blit(world, (dx * CELL, dy * CELL))
     draw_score(screen, font, flow)
     if flow.phase in TITLE_PHASES:
         draw_title(screen, big, font, flow)
@@ -162,7 +182,7 @@ def run() -> None:
     flow = Flow()
     screen = pygame.display.set_mode((flow.game.width * CELL, flow.game.height * CELL))
     pygame.display.set_caption("Snake")
-    fonts = (pygame.font.Font(None, 36), pygame.font.Font(None, 96))
+    fonts = (pygame.font.Font(None, round(36 * S)), pygame.font.Font(None, round(96 * S)))
     clock = pygame.time.Clock()
     while not flow.quit_requested:
         for event in pygame.event.get():
