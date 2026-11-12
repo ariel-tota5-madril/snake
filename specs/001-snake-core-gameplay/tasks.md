@@ -126,8 +126,8 @@ forma reproduzível.
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T027 [P] Add a test in `tests/test_core_purity.py` asserting `snake.core` does not import `pygame` (Princípio I)
-- [ ] T028 [P] Write `README.md` with setup, `pytest` and `python -m snake` instructions
+- [X] T027 [P] Add a test in `tests/test_core_purity.py` asserting `snake.core` does not import `pygame` (Princípio I)
+- [X] T028 [P] Write `README.md` with setup, `pytest` and `python -m snake` instructions
 - [ ] T029 Run the full quickstart.md validation (pytest + manual checklist) and record the result
 
 ---
