@@ -13,6 +13,9 @@
 ### Session 2026-11-12
 
 - Q: O que aparece na tela por trás da tela inicial e durante a contagem regressiva: o tabuleiro com a cobra parada e a comida, ou um fundo vazio? → A: Tabuleiro sempre visível: escurecido atrás da tela inicial; na contagem, cobra parada e comida já posicionada.
+- Q: O que deve ficar 3× maior: o desenho (casas maiores, mesma grade 20×20) ou o campo de jogo (mais casas)? → A: Meio-termo: grade 30×30 com casas de 48 px, janela 1440×1440.
+- Q: O que torna o pulso da pontuação "punchy"? → A: Pico rápido e elástico: chega a 1,8× em 60 ms, volta com um "quique" (encolhe a ~0,9× e assenta em 1×) até 300 ms; flash branco → amarelo.
+- Q: Deve haver tremor ao comer? → A: Sim, um mini tremor a cada fruta (pedido do usuário): até 0,15 s, com intensidade de no máximo um terço do tremor de colisão.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -32,8 +35,11 @@ placar. Entrega valor sozinha, sem depender das outras histórias.
 1. **Given** uma partida em andamento, **When** a cobra come uma fruta, **Then** surgem
    partículas na posição da cabeça, que se espalham e desaparecem em até 0,6 s.
 2. **Given** uma partida em andamento, **When** a cobra come uma fruta, **Then** o número da
-   pontuação aumenta de tamanho e volta ao normal (pulso) em até 0,3 s, mudando de cor durante
-   o pulso e voltando à cor original ao final.
+   pontuação salta para 1,8× o tamanho em até 60 ms, volta com um quique (encolhe a cerca de
+   0,9× e assenta no tamanho normal) em até 0,3 s no total, e pisca de branco para amarelo,
+   voltando à cor original ao final.
+5. **Given** uma partida em andamento, **When** a cobra come uma fruta, **Then** a área de jogo
+   dá um mini tremor de até 0,15 s, bem mais fraco que o da colisão, e volta à posição original.
 3. **Given** a cobra come duas frutas em sequência rápida, **When** o segundo efeito começa
    antes do primeiro terminar, **Then** os dois conjuntos de partículas aparecem e o pulso do
    placar reinicia, sem travar o jogo.
@@ -105,7 +111,9 @@ entrada e saída em cada transição.
 - **Efeitos durante a pausa do fim de partida**: partículas e pulso que estavam em andamento
   quando a cobra colide terminam normalmente (não congelam no meio).
 - **Comer e colidir no mesmo instante**: não acontece pelas regras atuais (comer não causa
-  colisão), mas se a última fruta der vitória, há partículas e pulso, sem tremor.
+  colisão), mas se a última fruta der vitória, há partículas, pulso e o mini tremor de comer, sem o
+  tremor de colisão.
+- **Colidir logo depois de comer**: o tremor de colisão substitui o mini tremor em andamento.
 - **Fechar a janela na tela inicial ou durante a contagem**: o jogo fecha imediatamente.
 - **Quit durante a animação de saída**: escolher "Quit" fecha o jogo sem esperar animação.
 - **Reinício rápido**: confirmar "Restart" várias vezes seguidas não acumula animações; só a
@@ -119,8 +127,12 @@ entrada e saída em cada transição.
 
 - **FR-001**: Ao comer uma fruta, o jogo DEVE emitir partículas a partir da posição da cabeça da
   cobra, que se espalham e somem em até 0,6 s.
-- **FR-002**: Ao comer uma fruta, o número da pontuação DEVE pulsar (aumentar e voltar ao tamanho
-  normal) em até 0,3 s, com um flash de cor que volta à cor original ao final.
+- **FR-002**: Ao comer uma fruta, o número da pontuação DEVE pulsar de forma "punchy": atingir
+  1,8× o tamanho em até 60 ms, voltar com um quique (mínimo de cerca de 0,9×) e assentar em 1×
+  até 300 ms do início, com flash de cor de branco para amarelo que volta à cor original ao final.
+- **FR-015**: Ao comer uma fruta, a área de jogo DEVE dar um mini tremor de até 0,15 s, com
+  intensidade máxima de um terço da do tremor de colisão, voltando exatamente à posição original;
+  se uma colisão acontecer durante o mini tremor, o tremor de colisão o substitui.
 - **FR-003**: Se um novo efeito de comer começar antes do anterior terminar, as partículas DEVEM
   coexistir e o pulso do placar DEVE reiniciar.
 - **FR-004**: Ao colidir com a parede ou com o próprio corpo, a área de jogo DEVE tremer por até
@@ -137,6 +149,9 @@ entrada e saída em cada transição.
   entra com animação; durante a contagem o tabuleiro fica visível com a cobra parada e a comida
   já posicionada, e a cobra só começa a andar depois do "1".
 - **FR-013**: Durante a contagem regressiva, setas, Espaço e Enter NÃO DEVEM ter efeito.
+- **FR-014**: O jogo DEVE usar uma grade de 30 × 30 casas, cada casa com 48 px, em uma janela de
+  1440 × 1440 px (3× a janela anterior de 480 px); textos e efeitos DEVEM acompanhar a nova
+  escala. A cobra começa no centro da nova grade, como definido na 001.
 - **FR-008**: A janela de fim de partida DEVE entrar com animação de até 0,4 s e, ao confirmar
   "Restart", sair com animação de até 0,4 s antes da nova partida.
 - **FR-009**: Qualquer tecla do menu pressionada durante a animação de entrada da janela DEVE
@@ -164,7 +179,8 @@ entrada e saída em cada transição.
 - **SC-001**: Em 100% das frutas comidas, partículas e pulso do placar aparecem e terminam dentro
   dos tempos definidos (0,6 s e 0,3 s).
 - **SC-002**: Em 100% das colisões, o tremor dura no máximo 0,4 s e a área de jogo volta à
-  posição original; em 0% das vitórias há tremor.
+  posição original; em 0% das vitórias há tremor de colisão; em 100% das frutas comidas há mini
+  tremor de no máximo 0,15 s.
 - **SC-003**: Toda transição de interface (entrada e saída) leva no máximo 0,4 s; entre
   confirmar "Restart" e a cobra começar a andar passam no máximo 3,4 s (saída da janela +
   contagem de 3 s).
@@ -182,5 +198,6 @@ entrada e saída em cada transição.
   o tremor acontece com a cobra parada.
 - As regras da feature 001 (movimento, comida, colisão, pontuação, menu) continuam iguais,
   exceto o início automático da partida, que passa a ser precedido pela tela inicial (só ao abrir
-  o jogo) e pela contagem regressiva (em toda partida).
+  o jogo) e pela contagem regressiva (em toda partida), e o tamanho da grade, que passa de
+  20 × 20 para 30 × 30 (FR-014).
 - A tela inicial aparece apenas ao abrir o jogo; "Restart" leva direto à contagem regressiva.
