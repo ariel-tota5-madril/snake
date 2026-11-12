@@ -122,13 +122,41 @@ forma reproduzível.
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 1 (incremento) - Fim de partida: menu e reinício (Priority: P1)
+
+**Goal**: ao fim da partida (Game Over ou vitória), mostrar a pontuação final e o menu
+"Restart"/"Quit"; ↑/↓ escolhem e Espaço/Enter confirmam (FR-014, FR-015, FR-016). Adicionado
+após a clarificação de 2026-11-12.
+
+**Independent Test**: perder uma partida, escolher "Restart" e jogar de novo; perder outra e
+escolher "Quit" (quickstart.md itens 7 a 10).
+
+### Tests for User Story 1 (incremento) ⚠️
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T030 [P] [US1] Test in `tests/test_restart.py`: after `GAME_OVER`, `restart()` returns to the initial state (`snake == ((10,10), (9,10), (8,10))`, `direction == RIGHT`, `score == 0`, `status == RUNNING`) with one food on a free cell
+- [ ] T031 [P] [US1] Test in `tests/test_restart.py`: `restart()` also works after `WON`, and two sessions with the same seed and the same commands (including a restart) produce the same food sequence (mesmo RNG)
+- [ ] T032 [P] [US1] Test in `tests/test_menu.py`: `EndMenu` starts with `selected == RESTART`; `move_down()` selects `QUIT`; `move_down()` at `QUIT` and `move_up()` at `RESTART` change nothing ("sem volta circular"); `confirm()` returns the selected option
+- [ ] T033 [P] Extend `tests/test_core_purity.py` to also check that `snake.menu` imports no `pygame`, `time` or `datetime`
+
+### Implementation for User Story 1 (incremento)
+
+- [ ] T034 [US1] Implement `Game.restart()` in `src/snake/core.py`: reset snake, direction, pending, score and status as in `__init__`, then spawn food with the same `rng`
+- [ ] T035 [P] [US1] Implement `MenuOption` (`RESTART`, `QUIT`) and `EndMenu` (`options`, `selected`, `move_up()`, `move_down()`, `confirm()`) in `src/snake/menu.py`
+- [ ] T036 [US1] In `src/snake/app.py`: when `status` is not `RUNNING`, show final score and the menu with the selected option highlighted; route ↑/↓ to the menu and Espaço/Enter to `confirm()` (`RESTART` → `game.restart()`, `QUIT` → close); ignore Espaço/Enter while `RUNNING`
+
+**Checkpoint**: `pytest` verde; perder → "Restart" inicia nova partida; "Quit" fecha o jogo.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
 - [X] T027 [P] Add a test in `tests/test_core_purity.py` asserting `snake.core` does not import `pygame` (Princípio I)
 - [X] T028 [P] Write `README.md` with setup, `pytest` and `python -m snake` instructions
-- [ ] T029 Run the full quickstart.md validation (pytest + manual checklist) and record the result
+- [ ] T029 Run the full quickstart.md validation (pytest + manual checklist items 1–10) and record the result
 
 ---
 
@@ -140,7 +168,9 @@ forma reproduzível.
 - **Foundational (Phase 2)**: depends on Setup; BLOCKS all user stories
 - **User Stories (Phase 3–5)**: depend on Foundational; run in priority order P1 → P2 → P3
   because all three edit `Game.step()` in `src/snake/core.py`
-- **Polish (Phase 6)**: depends on all user stories
+- **US1 incremento (Phase 6)**: depends on Phases 3–5 (reinício precisa do estado completo:
+  comida e pontuação)
+- **Polish (Phase 7)**: depends on all user stories, including Phase 6
 
 ### User Story Dependencies
 
@@ -159,6 +189,7 @@ forma reproduzível.
 - T003 can run alongside T001–T002
 - All test tasks inside a story ([P]) can be written together: they touch separate test functions
 - T027 and T028 can run in parallel
+- T030–T033 (tests) can be written together; T035 (`menu.py`) can run alongside T034 (`core.py`)
 
 ---
 
