@@ -18,6 +18,19 @@
   (estilo arcade); quem não entra vê o próprio resultado abaixo do placar, sem animação.
 - Q: Em que telas o WASD funciona? → A: Em todo o jogo (partida, menus, Opções e placar), exceto
   na entrada de nome, onde as letras são digitadas.
+- Q: O que acontece com "Opções" e "Quit" do menu de fim, agora substituído pelo placar? → A: O
+  placar fica só com "Jogar de novo" e "Tela inicial"; a tela inicial ganha "Sair" (Jogar / Opções
+  / Sair).
+- Q: Quantas linhas o placar mostra de uma vez? → A: 5 linhas. O foguete começa no chão da lista
+  visível e sobe na tela acelerando; um pouco acima do meio, a câmera passa a segui-lo (a lista
+  desce e o foguete fica parado na tela, dando a sensação de que continua subindo); quando a 1ª
+  posição já cabe na tela, a câmera para e o foguete segue subindo na tela com a velocidade máxima
+  que atingiu no começo.
+- Q: Com o placar cheio, o que acontece com o 10º colocado empurrado para fora? → A: Na ignição,
+  ele explode (letras espalhando) e os pedaços caem para fora pela base do placar, com som de
+  impacto; depois o foguete decola.
+- Q: O mesmo nome pode aparecer mais de uma vez no placar? → A: Sim: cada partida é uma entrada
+  separada (estilo arcade).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -101,18 +114,23 @@ e observar o tremor, a decolagem, as explosões e o pouso; repetir batendo o 1º
 1. **Given** a pontuação entra no placar, **When** a animação começa, **Then** o nome do jogador
    aparece na base do placar com partículas de fogo saindo por baixo e treme no lugar por um
    instante (ignição).
-2. **Given** a ignição terminou, **When** o foguete decola, **Then** o nome sobe, acelerando, e o
-   placar rola para acompanhar o nome.
-3. **Given** o nome subindo, **When** ele alcança um nome que está acima, **Then** esse nome
+2. **Given** a ignição terminou, **When** o foguete decola, **Then** o nome sobe na tela a partir
+   do chão da lista visível, acelerando até a velocidade máxima; ao passar um pouco acima do meio
+   da área visível, o nome fica parado na tela e a lista passa a descer na mesma velocidade
+   (câmera seguindo o foguete).
+3. **Given** a câmera seguindo o foguete, **When** a 1ª posição já cabe na tela, **Then** a lista
+   para de descer e o nome volta a subir na tela, com a mesma velocidade máxima, até a sua
+   posição.
+4. **Given** o nome subindo, **When** ele alcança um nome que está acima, **Then** esse nome
    explode (letras e pontos se espalham), toca um som de impacto e o nome se remonta na posição
    logo abaixo.
-4. **Given** o nome chega na sua nova posição, **When** pousa, **Then** as partículas param, toca
+5. **Given** o nome chega na sua nova posição, **When** pousa, **Then** as partículas param, toca
    um som de pouso e o nome fica destacado no lugar.
-5. **Given** a nova posição é a primeira, **When** o nome pousa, **Then** aparece "1ST PLACE!" em
+6. **Given** a nova posição é a primeira, **When** o nome pousa, **Then** aparece "1ST PLACE!" em
    destaque, com som de fanfarra, e só depois surgem as opções.
-6. **Given** a nova posição não é a primeira, **When** o nome pousa, **Then** a animação termina e
+7. **Given** a nova posição não é a primeira, **When** o nome pousa, **Then** a animação termina e
    surgem as opções.
-7. **Given** a animação em andamento, **When** o jogador aperta Enter, **Then** a animação pula
+8. **Given** a animação em andamento, **When** o jogador aperta Enter, **Then** a animação pula
    para o fim (nome já no lugar, "1ST PLACE!" se for o caso) e as opções aparecem.
 
 ---
@@ -143,7 +161,8 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
 - Placar vazio (primeira partida de todas): a entrada vai direto para a 1ª posição; a animação
   ainda tem ignição e pouso, sem impactos, e mostra "1ST PLACE!".
 - Pontuação que entra exatamente na última posição (ou num placar com espaço sobrando, abaixo de
-  todos): ignição e pouso no lugar, sem subir.
+  todos): ignição e pouso no lugar, sem subir; se o placar estava cheio, o antigo 10º ainda
+  explode e cai para fora na ignição (FR-013a).
 - Pontuação que não se qualifica (FR-008): o placar aparece sem animação de foguete, com o
   resultado do jogador mostrado à parte, abaixo do placar.
 - Arquivo do placar ausente, corrompido ou com valores inválidos: o jogo abre com o placar vazio,
@@ -180,11 +199,14 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
   arquivo ausente ou inválido resulta em placar vazio.
 - **FR-008**: O placar DEVE guardar as 10 melhores entradas. Uma pontuação entra se o placar tem
   menos de 10 entradas ou se é maior que a da 10ª (que então sai). Quem não entra vê o próprio
-  resultado (nome e pontos) abaixo do placar, sem animação de foguete.
-- **FR-009**: O placar DEVE mostrar 7 linhas por vez e rolar uma linha por vez com ↑/↓ e W/S,
+  resultado (nome e pontos) abaixo do placar, sem animação de foguete. Cada partida é uma entrada
+  separada: o mesmo nome pode aparecer várias vezes.
+- **FR-009**: O placar DEVE mostrar 5 linhas por vez e rolar uma linha por vez com ↑/↓ e W/S,
   com uma indicação de que há mais conteúdo acima/abaixo.
 - **FR-010**: Depois da animação, DEVEM aparecer as opções "Jogar de novo" e "Tela inicial",
   escolhidas com ←/→ ou A/D e confirmadas com Enter.
+- **FR-010a**: A tela inicial DEVE ter as opções "Jogar", "Opções" e "Sair"; "Sair" fecha o jogo
+  (com o som de confirmação, como o antigo "Quit").
 - **FR-011**: O jogo DEVE aceitar W/A/S/D como alternativa a ↑/←/↓/→ em todas as telas
   (partida, tela inicial, pausa, Opções e placar), exceto na entrada de nome, onde as letras são
   digitadas.
@@ -195,10 +217,16 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
   com partículas de foguete, um tremor de ignição, a decolagem e a subida até a posição nova.
 - **FR-013**: Cada nome ultrapassado DEVE explodir (letras e pontos espalhando) e se remontar uma
   posição abaixo.
+- **FR-013a**: Se o placar estava cheio, o 10º colocado anterior DEVE explodir durante a ignição,
+  com os pedaços caindo para fora pela base do placar e som de impacto, antes da decolagem.
 - **FR-014**: Ao pousar na 1ª posição, DEVE aparecer "1ST PLACE!"; em outra posição, a animação
   termina no pouso.
 - **FR-015**: Enter durante a animação DEVE pular para o estado final.
-- **FR-016**: O placar DEVE rolar sozinho para manter o nome subindo sempre visível.
+- **FR-016**: Durante a subida, o foguete DEVE partir do chão da lista visível e acelerar até uma
+  velocidade máxima, mantida até o fim; quando ele passa um pouco acima do meio da área visível, a
+  câmera o segue (a lista desce e ele fica parado na tela); quando a 1ª posição cabe na tela, a
+  câmera para e ele termina a subida na tela. A rolagem automática termina com a posição do
+  jogador visível.
 
 **Som**
 
@@ -232,11 +260,11 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
 - "Play again" e "main menu" aparecem em português como "Jogar de novo" e "Tela inicial", no
   padrão dos menus atuais; "1ST PLACE!" fica em inglês, como pedido.
 - O placar substitui o menu de fim de partida (Restart/Opções/Quit); Opções continua acessível
-  pela tela inicial e pela pausa, e o jogo é fechado pela janela.
+  pela tela inicial e pela pausa, e "Sair" passa para a tela inicial (FR-010a).
 - O jingle de derrota/vitória e o tremor de colisão continuam acontecendo antes do placar.
 - O placar fica salvo junto com as configurações (pasta de configuração do usuário).
-- O tempo por posição ultrapassada diminui quando a subida é longa, para respeitar o limite de
-  5 s (SC-003).
-- O placar mostra 7 das 10 linhas por vez, para caber com folga no painel vertical e manter a
-  rolagem útil; ao abrir, ele já está rolado para mostrar a posição do jogador.
+- A velocidade máxima do foguete é escolhida para que a subida mais longa possível (da 10ª à 1ª
+  posição) caiba no limite de 5 s da animação (SC-003).
+- Sem animação (pontuação que não entra), o placar abre rolado até o fim, mostrando as últimas
+  posições logo acima do resultado do jogador.
 - O nome do jogador é lembrado só durante a sessão; ao abrir o jogo, o campo começa vazio.
