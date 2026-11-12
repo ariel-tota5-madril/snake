@@ -115,6 +115,7 @@ class Flow:
         self._pop_in_ms: float | None = None
         self._options_origin = Phase.TITLE
         self._pause_exit = MenuOption.CONTINUE
+        self._last_number: int | None = None
         self._enter_title()
 
     # --- consultas ------------------------------------------------------------------------
@@ -168,16 +169,22 @@ class Flow:
         menu = self._active_menu()
         if menu is None:
             return
-        if direction is Direction.UP:
-            menu.move_up()
-        elif direction is Direction.DOWN:
-            menu.move_down()
+        if direction in (Direction.UP, Direction.DOWN):
+            moved = menu.move_up() if direction is Direction.UP else menu.move_down()
+            if moved:
+                self._emit(SoundEvent.NAV)  # só toca quando a seleção muda (FR-009)
         elif self.phase is Phase.OPTIONS and menu.selected in VOLUME_FIELDS:
-            self.settings.adjust(VOLUME_FIELDS[menu.selected], 1 if direction is Direction.RIGHT else -1)
+            field = VOLUME_FIELDS[menu.selected]
+            if self.settings.adjust(field, 1 if direction is Direction.RIGHT else -1):
+                self._emit(SoundEvent.VOLUME_PREVIEW if field == "sfx" else SoundEvent.NAV)
 
     def confirm(self) -> None:
         if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN):
             self._go(ENTRANCE_DONE[self.phase])  # conclui a entrada e trata a tecla
+        if self.phase in (Phase.TITLE, Phase.MENU, Phase.PAUSE) or (
+            self.phase is Phase.OPTIONS and self.options_menu.selected is MenuOption.BACK
+        ):
+            self._emit(SoundEvent.CONFIRM)
         if self.phase is Phase.TITLE:
             if self.title_menu.confirm() is MenuOption.PLAY:
                 self._go(Phase.TITLE_OUT)
@@ -234,15 +241,25 @@ class Flow:
             self._go(self._options_origin)
         elif self.phase is Phase.COUNTDOWN and self.phase_ms >= COUNTDOWN_MS:
             self._go(Phase.PLAYING)
+            self._emit(SoundEvent.GO)
             self._emit(SoundEvent.MUSIC_GAME)
             self._step_once()  # a cobra anda assim que a contagem termina (SC-003 da 002)
             self._check_end()
         elif self.phase is Phase.RESUME and self.phase_ms >= RESUME_MS:
             self._go(Phase.PLAYING)  # sem passo imediato nem passos acumulados
+            self._emit(SoundEvent.GO)
         elif self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
         elif self.phase is Phase.SHAKING and self.shake.done:
             self._open_menu()
+        self._beep_on_new_number()
+
+    def _beep_on_new_number(self) -> None:
+        """Bipe a cada número novo da contagem inicial e da retomada (FR-008)."""
+        number = self.countdown_number or self.resume_number
+        if number is not None and number != self._last_number:
+            self._emit(SoundEvent.COUNT)
+        self._last_number = number
 
     def _update_effects(self, dt_ms: float) -> None:
         for burst in self.bursts:

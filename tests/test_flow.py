@@ -690,3 +690,93 @@ def test_pulse_pop_waits_while_paused():
     for _ in range(10):
         flow.update(50)
     assert SoundEvent.PULSE_POP not in flow.drain_sounds()
+
+
+# T027 — sons de interface
+def drain_while(flow: Flow, ms: float, dt: float = 50) -> list:
+    events = []
+    for _ in range(int(ms // dt)):
+        flow.update(dt)
+        events += flow.drain_sounds()
+    return events
+
+
+def test_countdown_beeps_on_each_number_then_go():
+    flow = to_title(Flow(seed=1))
+    flow.drain_sounds()
+    flow.confirm()
+    flow.drain_sounds()
+    events = drain_while(flow, UI_ANIM_MS + COUNTDOWN_MS + 50)
+    assert events.count(SoundEvent.COUNT) == 3
+    assert events.count(SoundEvent.GO) == 1
+    assert events.index(SoundEvent.GO) > max(i for i, e in enumerate(events) if e is SoundEvent.COUNT)
+
+
+def test_resume_beeps_on_each_number_then_go():
+    flow = paused(to_playing(Flow(seed=1)))
+    flow.confirm()
+    flow.drain_sounds()
+    events = drain_while(flow, UI_ANIM_MS + 1500 + 50)
+    assert events.count(SoundEvent.COUNT) == 3 and events.count(SoundEvent.GO) == 1
+
+
+def test_nav_only_when_selection_changes():
+    flow = to_title(Flow(seed=1))
+    flow.drain_sounds()
+    flow.direction(Direction.UP)  # já está no topo
+    assert flow.drain_sounds() == []
+    flow.direction(Direction.DOWN)
+    assert flow.drain_sounds() == [SoundEvent.NAV]
+    flow.direction(Direction.DOWN)  # já está na última
+    assert flow.drain_sounds() == []
+
+
+def test_confirm_sound_on_accepted_confirmations():
+    flow = to_title(Flow(seed=1))
+    flow.drain_sounds()
+    flow.confirm()
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+    to_menu(to_playing(flow))
+    flow.drain_sounds()
+    flow.confirm()  # Restart
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+
+
+def test_quit_plays_confirm_sound():
+    flow = to_menu(to_playing(Flow(seed=1)))
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)
+    flow.drain_sounds()
+    flow.confirm()
+    assert flow.quit_requested and SoundEvent.CONFIRM in flow.drain_sounds()
+
+
+def test_volume_sliders_sound_only_when_value_changes():
+    flow = to_title(Flow(seed=1, settings=AudioSettings(music=100, sfx=80)))
+    open_options_from(flow, 1)
+    flow.drain_sounds()
+    flow.direction(Direction.RIGHT)  # música já em 100%
+    assert flow.drain_sounds() == []
+    flow.direction(Direction.LEFT)
+    assert flow.drain_sounds() == [SoundEvent.NAV]
+    flow.direction(Direction.DOWN)
+    flow.drain_sounds()
+    flow.direction(Direction.RIGHT)  # efeitos: toca a amostra
+    assert flow.drain_sounds() == [SoundEvent.VOLUME_PREVIEW]
+
+
+def test_ignored_keys_make_no_sound():
+    flow = Flow(seed=1)  # TITLE_IN
+    flow.drain_sounds()
+    flow.direction(Direction.DOWN)
+    flow.confirm()
+    flow.escape()
+    assert flow.drain_sounds() == []
+    to_title(flow)
+    flow.confirm()
+    flow.update(UI_ANIM_MS)  # contagem
+    flow.drain_sounds()
+    flow.direction(Direction.UP)
+    flow.confirm()
+    flow.escape()
+    assert flow.drain_sounds() == []

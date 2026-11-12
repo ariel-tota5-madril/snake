@@ -115,8 +115,17 @@ def _jingles() -> None:
     )
 
 
+def _ui_sfx() -> None:
+    SFX[SoundEvent.COUNT] = (render([Note("square50", 880, 80, decay=0.5)]), 0.6)
+    SFX[SoundEvent.GO] = (render([Note("square50", 1319, 250, decay=0.6)]), 0.7)  # uma quinta acima
+    SFX[SoundEvent.NAV] = (render([Note("square25", 1200, 30, decay=1)]), 0.4)
+    SFX[SoundEvent.CONFIRM] = (render([Note("square25", 880, 60), Note("square25", 1319, 60, decay=1)]), 0.6)
+    SFX[SoundEvent.VOLUME_PREVIEW] = (SFX[SoundEvent.EAT][0], 0.7)  # amostra = som de coleta
+
+
 def build() -> None:
     """Gera todos os sons (uma vez, ao abrir o jogo)."""
     _gameplay_sfx()
+    _ui_sfx()
     _music()
     _jingles()

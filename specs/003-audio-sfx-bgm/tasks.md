@@ -131,13 +131,13 @@ os volumes mantidos (quickstart.md itens 1–4, 8–10, 12).
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T026 [P] [US3] Test in `tests/test_sounds.py`: `SFX` has `COUNT`, `GO` (higher pitch and longer than `COUNT`), `NAV`, `CONFIRM` and `VOLUME_PREVIEW`
-- [ ] T027 [P] [US3] Test in `tests/test_flow.py`: `COUNT` for each countdown and resume number and `GO` when the snake starts; `NAV` only when a menu selection or slider value changes; `CONFIRM` on accepted confirmations; `VOLUME_PREVIEW` when the Efeitos slider changes; ignored keys (arrows on title entrance, anything during countdown/shake/resume) emit nothing
+- [X] T026 [P] [US3] Test in `tests/test_sounds.py`: `SFX` has `COUNT`, `GO` (higher pitch and longer than `COUNT`), `NAV`, `CONFIRM` and `VOLUME_PREVIEW`
+- [X] T027 [P] [US3] Test in `tests/test_flow.py`: `COUNT` for each countdown and resume number and `GO` when the snake starts; `NAV` only when a menu selection or slider value changes; `CONFIRM` on accepted confirmations; `VOLUME_PREVIEW` when the Efeitos slider changes; ignored keys (arrows on title entrance, anything during countdown/shake/resume) emit nothing
 
 ### Implementation for User Story 3
 
-- [ ] T028 [P] [US3] Define `COUNT`, `GO`, `NAV`, `CONFIRM` and `VOLUME_PREVIEW` sounds in `src/snake/sounds.py`
-- [ ] T029 [US3] Emit `COUNT`, `GO`, `NAV`, `CONFIRM` and `VOLUME_PREVIEW` from `src/snake/flow.py`
+- [X] T028 [P] [US3] Define `COUNT`, `GO`, `NAV`, `CONFIRM` and `VOLUME_PREVIEW` sounds in `src/snake/sounds.py`
+- [X] T029 [US3] Emit `COUNT`, `GO`, `NAV`, `CONFIRM` and `VOLUME_PREVIEW` from `src/snake/flow.py`
 
 **Checkpoint**: todas as histórias funcionando; `pytest` verde.
 

@@ -10,7 +10,7 @@ import pygame
 
 from snake import audio as audio_module
 from snake.core import Direction, Status
-from snake.flow import RESUME_STEP_MS, UI_ANIM_MS, Flow, Phase
+from snake.flow import RESUME_STEP_MS, UI_ANIM_MS, Flow, Phase, SoundEvent
 from snake.juice import ease_out
 from snake.menu import Menu, MenuOption
 
@@ -34,6 +34,7 @@ PAUSE_UI = {Phase.PAUSE_IN, Phase.PAUSE, Phase.PAUSE_OUT}
 OPTIONS_UI = {Phase.OPTIONS_IN, Phase.OPTIONS, Phase.OPTIONS_OUT}
 SETTINGS_PATH = Path.home() / ".config" / "snake" / "settings.json"
 SLIDER_BG = (60, 64, 76)
+QUIT_SOUND_WAIT_MS = 150  # deixa o som de confirmação do "Quit" tocar (≤ 0,3 s, US3 cenário 4)
 
 KEYS = {
     pygame.K_UP: Direction.UP,
@@ -245,12 +246,19 @@ def run() -> None:
     pygame.display.set_caption("Snake")
     fonts = (pygame.font.Font(None, round(36 * S)), pygame.font.Font(None, round(96 * S)))
     clock = pygame.time.Clock()
+    last_sounds: list[SoundEvent] = []
     while not flow.quit_requested:
         for event in pygame.event.get():
             handle_event(flow, event)
         flow.update(clock.tick(FPS))
         audio.apply_volumes(flow.settings)  # mudanças de volume valem na hora (FR-018)
-        for sound in flow.drain_sounds():
+        last_sounds = flow.drain_sounds()
+        for sound in last_sounds:
             audio.play(sound)
         draw(screen, fonts, flow)
+    remaining = flow.drain_sounds()  # eventos gerados depois do último desenho
+    for sound in remaining:
+        audio.play(sound)
+    if SoundEvent.CONFIRM in last_sounds + remaining:
+        pygame.time.wait(QUIT_SOUND_WAIT_MS)
     pygame.quit()

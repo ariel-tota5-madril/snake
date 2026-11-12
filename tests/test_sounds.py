@@ -60,3 +60,21 @@ def test_music_lasts_whole_bars_and_loops_without_click(event, bpm):
 def test_jingles_exist_and_are_short():
     for event in (SoundEvent.LOSE, SoundEvent.WIN):
         assert 0 < duration_ms(sounds.JINGLES[event]) < 2000
+
+
+# T026 — sons de interface
+def dominant_crossings_per_ms(samples) -> float:
+    return zero_crossings(samples) / duration_ms(samples)
+
+
+def test_ui_effects_exist():
+    for event in (SoundEvent.COUNT, SoundEvent.GO, SoundEvent.NAV, SoundEvent.CONFIRM,
+                  SoundEvent.VOLUME_PREVIEW):
+        samples, volume = sounds.SFX[event]
+        assert len(samples) > 0 and 0 < volume <= 1
+
+
+def test_go_is_higher_and_longer_than_count():
+    count, go = sounds.SFX[SoundEvent.COUNT][0], sounds.SFX[SoundEvent.GO][0]
+    assert duration_ms(go) > duration_ms(count)
+    assert dominant_crossings_per_ms(go) > dominant_crossings_per_ms(count)
