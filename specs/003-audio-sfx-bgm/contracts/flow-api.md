@@ -14,7 +14,7 @@ settings_path: Path | None = None)` — `settings` padrão carregado de `setting
 |--------|---------|
 | `escape()` | **novo**: `PLAYING` → pausa; `PAUSE` → continuar; `OPTIONS` → voltar; demais fases: ignorado |
 | `direction(LEFT/RIGHT)` | em `OPTIONS` com `MUSIC` ou `SFX` selecionado: ajusta o volume |
-| `direction(UP/DOWN)` | também em `TITLE`, `PAUSE` e `OPTIONS` (e nas fases `_IN` correspondentes, concluindo a entrada) |
+| `direction(UP/DOWN)` | também em `TITLE`, `PAUSE` e `OPTIONS`; em `PAUSE_IN` e `OPTIONS_IN` concluem a entrada e são aplicadas (como `MENU_IN` na 002); em `TITLE_IN` continuam ignoradas (002) |
 | `confirm()` | `TITLE`: confirma `PLAY` ou `OPTIONS`; `PAUSE`: `CONTINUE`, `OPTIONS` ou `TITLE`; `MENU`: `RESTART`, `OPTIONS` ou `QUIT`; `OPTIONS`: `BACK` |
 
 ## Consultas novas

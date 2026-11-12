@@ -82,7 +82,7 @@ def test_win_leads_to_menu():
 def test_menu_selection_moves_with_up_and_down():
     flow = to_menu(to_playing(Flow(seed=1)))
     flow.direction(Direction.DOWN)
-    assert flow.menu.selected is MenuOption.QUIT
+    assert flow.menu.selected is MenuOption.OPTIONS  # 003/FR-016: Restart, Opções, Quit
     flow.direction(Direction.UP)
     assert flow.menu.selected is MenuOption.RESTART
 
@@ -102,6 +102,7 @@ def test_restart_starts_a_new_game():
 def test_quit_option_requests_quit():
     flow = to_menu(to_playing(Flow(seed=1)))
     flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)  # 003/FR-016: Quit é a terceira opção
     flow.confirm()
     assert flow.quit_requested
 
@@ -279,7 +280,7 @@ def test_menu_key_during_entrance_completes_it_and_is_applied():
     assert flow.phase is Phase.MENU_IN
     flow.direction(Direction.DOWN)
     assert flow.phase is Phase.MENU
-    assert flow.menu.selected is MenuOption.QUIT
+    assert flow.menu.selected is MenuOption.OPTIONS  # 003/FR-016
 
 
 def test_restart_leaves_menu_then_goes_to_countdown_not_title():
@@ -296,6 +297,7 @@ def test_restart_leaves_menu_then_goes_to_countdown_not_title():
 def test_quit_from_menu_is_immediate():
     flow = to_menu(to_playing(Flow(seed=1)))
     flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)  # 003/FR-016
     flow.confirm()
     assert flow.quit_requested
     assert flow.phase is Phase.MENU
@@ -482,3 +484,209 @@ def test_win_stops_music_then_plays_win_jingle():
     events = sounds_until(flow, Phase.MENU)
     assert SoundEvent.MUSIC_STOP in events and SoundEvent.WIN in events
     assert events.index(SoundEvent.MUSIC_STOP) < events.index(SoundEvent.WIN)
+
+
+
+# --- T020: pausa, Opções e menus novos (003 / US4) ----------------------------------------
+
+from snake.settings import AudioSettings  # noqa: E402
+
+
+def make_flow(tmp_path=None, **kwargs) -> Flow:
+    path = None if tmp_path is None else tmp_path / "settings.json"
+    return Flow(seed=1, settings_path=path, **kwargs)
+
+
+def open_options_from(flow: Flow, steps_down: int) -> None:
+    for _ in range(steps_down):
+        flow.direction(Direction.DOWN)
+    flow.confirm()
+    assert flow.phase is Phase.OPTIONS_IN
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.OPTIONS
+
+
+def leave_options(flow: Flow, via_escape: bool = True) -> None:
+    if via_escape:
+        flow.escape()
+    else:
+        flow.direction(Direction.DOWN)
+        flow.direction(Direction.DOWN)
+        flow.confirm()
+    assert flow.phase is Phase.OPTIONS_OUT
+    flow.update(UI_ANIM_MS)
+
+
+def paused(flow: Flow) -> Flow:
+    flow.escape()
+    assert flow.phase is Phase.PAUSE_IN
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.PAUSE
+    return flow
+
+
+def test_title_shows_play_and_options_menu():
+    flow = to_title(Flow(seed=1))
+    assert flow.title_menu.options[0] is MenuOption.PLAY
+    assert flow.title_menu.selected is MenuOption.PLAY
+    flow.direction(Direction.DOWN)
+    assert flow.title_menu.selected is MenuOption.OPTIONS
+
+
+def test_options_from_title_changes_volume_saves_and_returns(tmp_path):
+    flow = to_title(make_flow(tmp_path))
+    open_options_from(flow, 1)
+    assert flow.options_menu.selected is MenuOption.MUSIC
+    flow.direction(Direction.RIGHT)
+    assert flow.settings.music == 70
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.LEFT)
+    assert flow.settings.sfx == 70
+    leave_options(flow)
+    assert flow.phase is Phase.TITLE
+    saved = AudioSettings.load(tmp_path / "settings.json")
+    assert (saved.music, saved.sfx) == (70, 70)
+
+
+def test_flow_loads_saved_volumes(tmp_path):
+    AudioSettings(music=20, sfx=40).save(tmp_path / "settings.json")
+    flow = make_flow(tmp_path)
+    assert (flow.settings.music, flow.settings.sfx) == (20, 40)
+
+
+def test_options_back_item_returns_to_origin():
+    flow = to_title(Flow(seed=1))
+    open_options_from(flow, 1)
+    leave_options(flow, via_escape=False)
+    assert flow.phase is Phase.TITLE
+
+
+def test_options_from_end_menu_returns_to_end_menu():
+    flow = to_menu(to_playing(Flow(seed=1)))
+    open_options_from(flow, 1)
+    leave_options(flow)
+    assert flow.phase is Phase.MENU
+    assert flow.menu.selected is MenuOption.OPTIONS
+
+
+def test_escape_pauses_and_freezes_everything():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)  # come: partículas, pulso e mini tremor ativos
+    flow.drain_sounds()
+    paused(flow)
+    snapshot = (flow.game.snake, flow.game.score, flow.game.food,
+                [(p.x, p.y, p.age_ms) for b in flow.bursts for p in b.particles],
+                flow.pulse.scale, flow.shake.amplitude)
+    for _ in range(40):
+        flow.update(50)
+    assert (flow.game.snake, flow.game.score, flow.game.food,
+            [(p.x, p.y, p.age_ms) for b in flow.bursts for p in b.particles],
+            flow.pulse.scale, flow.shake.amplitude) == snapshot
+    assert flow.pause_menu.selected is MenuOption.CONTINUE
+
+
+def test_pause_ducks_music_and_continue_unducks():
+    flow = to_playing(Flow(seed=1))
+    flow.drain_sounds()
+    flow.escape()
+    assert SoundEvent.MUSIC_DUCK in flow.drain_sounds()
+    flow.update(UI_ANIM_MS)
+    flow.confirm()  # Continuar
+    assert SoundEvent.MUSIC_UNDUCK in flow.drain_sounds()
+
+
+def test_continue_resumes_after_quick_countdown_from_same_point():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    flow.direction(Direction.UP)
+    flow.update(STEP_MS)
+    head, direction = flow.game.snake[0], flow.game.direction
+    paused(flow)
+    flow.confirm()
+    assert flow.phase is Phase.PAUSE_OUT
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.RESUME
+    numbers = []
+    for _ in range(14):  # 1400 ms
+        numbers.append(flow.resume_number)
+        flow.direction(Direction.LEFT)  # ignorado
+        flow.confirm()  # ignorado
+        flow.escape()  # ignorado
+        flow.update(100)
+    assert flow.phase is Phase.RESUME
+    assert flow.game.snake[0] == head and flow.game.direction is direction
+    assert [n for i, n in enumerate(numbers) if i == 0 or numbers[i - 1] != n] == [3, 2, 1]
+    flow.update(100)  # 1500 ms
+    assert flow.phase is Phase.PLAYING
+    assert flow.game.snake[0] == head  # sem passos acumulados
+    flow.update(STEP_MS)
+    assert flow.game.snake[0] == (head[0], head[1] - 1)  # segue na mesma direção
+
+
+def test_escape_in_pause_also_continues():
+    flow = paused(to_playing(Flow(seed=1)))
+    flow.escape()
+    assert flow.phase is Phase.PAUSE_OUT
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.RESUME
+
+
+def test_options_from_pause_returns_to_pause():
+    flow = paused(to_playing(Flow(seed=1)))
+    open_options_from(flow, 1)
+    leave_options(flow)
+    assert flow.phase is Phase.PAUSE
+
+
+def test_pause_to_title_abandons_game():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    assert flow.game.score == 1
+    paused(flow)
+    flow.drain_sounds()
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)
+    assert flow.pause_menu.selected is MenuOption.TITLE
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.TITLE_IN
+    assert flow.game.score == 0 and flow.game.snake == ((15, 15), (14, 15), (13, 15))
+    events = flow.drain_sounds()
+    assert SoundEvent.MUSIC_STOP in events and SoundEvent.MUSIC_TITLE in events
+
+
+def test_escape_is_ignored_outside_playing_pause_and_options():
+    flow = to_title(Flow(seed=1))
+    flow.escape()
+    assert flow.phase is Phase.TITLE
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+    flow.escape()
+    assert flow.phase is Phase.COUNTDOWN
+    to_playing(flow)
+    flow.game.food = (0, 0)
+    while flow.phase is Phase.PLAYING:
+        flow.update(STEP_MS)
+    assert flow.phase is Phase.SHAKING
+    flow.escape()
+    assert flow.phase is Phase.SHAKING
+    to_menu(flow)
+    flow.escape()
+    assert flow.phase is Phase.MENU
+
+
+def test_pulse_pop_waits_while_paused():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    flow.drain_sounds()
+    paused(flow)
+    for _ in range(10):
+        flow.update(50)
+    assert SoundEvent.PULSE_POP not in flow.drain_sounds()

@@ -106,17 +106,17 @@ os volumes mantidos (quickstart.md itens 1–4, 8–10, 12).
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T018 [P] [US4] Tests in `tests/test_settings.py`: defaults 60/80; `adjust` moves by 10, stays within 0–100 and returns whether it changed; `save`/`load` round trip (creates the folder); missing file, invalid JSON, wrong types and out-of-range values all load as 60/80
-- [ ] T019 [P] [US4] Rewrite `tests/test_menu.py` for the generic `Menu`: option sets `TITLE_OPTIONS`, `PAUSE_OPTIONS`, `END_OPTIONS` (`RESTART`, `OPTIONS`, `QUIT`) and `SETTINGS_OPTIONS`; `move_up`/`move_down` return whether the selection changed; no wrap-around
-- [ ] T020 [US4] Tests in `tests/test_flow.py`: title menu (`PLAY` starts the countdown, `OPTIONS` opens Options); Options reachable from title, pause and end menu and "Voltar"/`escape()` returns to the same origin phase; ←/→ change the selected volume and leaving Options saves to `settings_path`; `escape()` in `PLAYING` pauses (`PAUSE_IN` → `PAUSE`), game and effects frozen; continue/`escape()` → `RESUME` with 3, 2, 1 every 500 ms, then `PLAYING` with the same snake and direction and no accumulated steps; pause → "Tela inicial" abandons the game and returns to the title with a fresh game; `escape()` is ignored in title, countdown, shaking and end menu; `MUSIC_DUCK`/`MUSIC_UNDUCK` around the pause
-- [ ] T021 [US4] Update the 001/002 tests in `tests/test_flow.py` that assumed the end menu was ("Restart", "Quit") — ↓ now selects "Opções" (FR-016)
+- [X] T018 [P] [US4] Tests in `tests/test_settings.py`: defaults 60/80; `adjust` moves by 10, stays within 0–100 and returns whether it changed; `save`/`load` round trip (creates the folder); missing file, invalid JSON, wrong types and out-of-range values all load as 60/80
+- [X] T019 [P] [US4] Rewrite `tests/test_menu.py` for the generic `Menu`: option sets `TITLE_OPTIONS`, `PAUSE_OPTIONS`, `END_OPTIONS` (`RESTART`, `OPTIONS`, `QUIT`) and `SETTINGS_OPTIONS`; `move_up`/`move_down` return whether the selection changed; no wrap-around
+- [X] T020 [US4] Tests in `tests/test_flow.py`: title menu (`PLAY` starts the countdown, `OPTIONS` opens Options); Options reachable from title, pause and end menu and "Voltar"/`escape()` returns to the same origin phase; ←/→ change the selected volume and leaving Options saves to `settings_path`; `escape()` in `PLAYING` pauses (`PAUSE_IN` → `PAUSE`), game and effects frozen; continue/`escape()` → `RESUME` with 3, 2, 1 every 500 ms, then `PLAYING` with the same snake and direction and no accumulated steps; pause → "Tela inicial" abandons the game and returns to the title with a fresh game; `escape()` is ignored in title, countdown, shaking and end menu; `MUSIC_DUCK`/`MUSIC_UNDUCK` around the pause
+- [X] T021 [US4] Update the 001/002 tests in `tests/test_flow.py` that assumed the end menu was ("Restart", "Quit") — ↓ now selects "Opções" (FR-016)
 
 ### Implementation for User Story 4
 
-- [ ] T022 [P] [US4] Implement `AudioSettings` with `adjust`, `load` and `save` in `src/snake/settings.py`
-- [ ] T023 [P] [US4] Generalize `src/snake/menu.py` into `Menu(options)` with the option sets above; keep `EndMenu` as `Menu(END_OPTIONS)`
-- [ ] T024 [US4] In `src/snake/flow.py`: title menu, end menu with "Opções", phases `PAUSE_IN`/`PAUSE`/`PAUSE_OUT`/`RESUME`/`OPTIONS_IN`/`OPTIONS`/`OPTIONS_OUT` with origin tracking, `escape()`, ←/→ in Options, settings load/save, ducking events, frozen game time while paused
-- [ ] T025 [US4] In `src/snake/app.py`: Esc → `escape()`; draw the title menu, pause menu, Options screen with two slider bars and "Voltar", and the resume countdown; default `settings_path` `~/.config/snake/settings.json`; apply volumes immediately and duck the music while paused in `src/snake/audio.py`
+- [X] T022 [P] [US4] Implement `AudioSettings` with `adjust`, `load` and `save` in `src/snake/settings.py`
+- [X] T023 [P] [US4] Generalize `src/snake/menu.py` into `Menu(options)` with the option sets above; keep `EndMenu` as `Menu(END_OPTIONS)`
+- [X] T024 [US4] In `src/snake/flow.py`: title menu, end menu with "Opções", phases `PAUSE_IN`/`PAUSE`/`PAUSE_OUT`/`RESUME`/`OPTIONS_IN`/`OPTIONS`/`OPTIONS_OUT` with origin tracking, `escape()`, ←/→ in Options, settings load/save, ducking events, frozen game time while paused
+- [X] T025 [US4] In `src/snake/app.py`: Esc → `escape()`; draw the title menu, pause menu, Options screen with two slider bars and "Voltar", and the resume countdown; default `settings_path` `~/.config/snake/settings.json`; apply volumes immediately and duck the music while paused in `src/snake/audio.py`
 
 **Checkpoint**: `pytest` verde; pausa, Opções e volumes salvos funcionando.
 
