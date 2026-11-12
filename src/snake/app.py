@@ -13,6 +13,7 @@ FPS = 60
 BACKGROUND = (20, 24, 32)
 SNAKE_HEAD = (120, 220, 120)
 SNAKE_BODY = (70, 170, 90)
+FOOD = (230, 90, 70)
 TEXT = (240, 240, 240)
 
 KEYS = {
@@ -30,11 +31,16 @@ def draw_centered(screen: pygame.Surface, font: pygame.font.Font, text: str) -> 
 
 def draw(screen: pygame.Surface, font: pygame.font.Font, game: Game) -> None:
     screen.fill(BACKGROUND)
+    if game.food is not None:
+        fx, fy = game.food
+        pygame.draw.rect(screen, FOOD, (fx * CELL + 3, fy * CELL + 3, CELL - 6, CELL - 6))
     for i, (x, y) in enumerate(game.snake):
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
         pygame.draw.rect(screen, color, (x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2))
     if game.status is Status.GAME_OVER:
         draw_centered(screen, font, "Game Over")
+    elif game.status is Status.WON:
+        draw_centered(screen, font, "Você venceu!")
     pygame.display.flip()
 
 

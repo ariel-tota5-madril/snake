@@ -88,16 +88,16 @@ forma reproduzível.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T017 [P] [US2] Test in `tests/test_food.py`: a new game has exactly one food, inside the grid and not on the snake
-- [ ] T018 [P] [US2] Test in `tests/test_food.py`: with food right in front of the head, `step()` grows the snake by 1 and spawns a new food on a free cell
-- [ ] T019 [P] [US2] Test in `tests/test_food.py`: two games with the same seed and the same `turn`/`step` sequence produce identical `food` sequences (FR-008, SC-004)
-- [ ] T020 [P] [US2] Test in `tests/test_collision.py`: on a grid filled by the snake after eating, `status == WON` and `food is None` (FR-012)
+- [X] T017 [P] [US2] Test in `tests/test_food.py`: a new game has exactly one food, inside the grid and not on the snake
+- [X] T018 [P] [US2] Test in `tests/test_food.py`: with food right in front of the head, `step()` grows the snake by 1 and spawns a new food on a free cell
+- [X] T019 [P] [US2] Test in `tests/test_food.py`: two games with the same seed and the same `turn`/`step` sequence produce identical `food` sequences (FR-008, SC-004)
+- [X] T020 [P] [US2] Test in `tests/test_collision.py`: on a grid filled by the snake after eating, `status == WON` and `food is None` (FR-012)
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement food spawn in `src/snake/core.py`: `rng.choice` over the sorted list of free cells; call it in `Game.__init__`
-- [ ] T022 [US2] Extend `Game.step()` in `src/snake/core.py` with data-model.md steps 5 and 8 (eat → grow, keep tail, respawn food; no free cell → `WON`)
-- [ ] T023 [US2] Draw the food in `src/snake/app.py` and show a "Você venceu" message when `status == WON`
+- [X] T021 [US2] Implement food spawn in `src/snake/core.py`: `rng.choice` over the sorted list of free cells; call it in `Game.__init__`
+- [X] T022 [US2] Extend `Game.step()` in `src/snake/core.py` with data-model.md steps 5 and 8 (eat → grow, keep tail, respawn food; no free cell → `WON`)
+- [X] T023 [US2] Draw the food in `src/snake/app.py` and show a "Você venceu" message when `status == WON`
 
 **Checkpoint**: `pytest` verde; a cobra come, cresce e a comida reaparece.
 

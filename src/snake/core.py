@@ -42,10 +42,22 @@ class Game:
         self.food: Cell | None = None
         self.score = 0
         self.status = Status.RUNNING
+        self.food = self._spawn_food()
 
     @property
     def snake(self) -> tuple[Cell, ...]:
         return tuple(self._snake)
+
+    def _spawn_food(self) -> Cell | None:
+        """Sorteia uma casa livre; a lista ordenada torna o resultado reproduzível pela seed."""
+        occupied = set(self._snake)
+        free = [
+            (x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+            if (x, y) not in occupied
+        ]
+        return self._rng.choice(free) if free else None
 
     def turn(self, direction: Direction) -> None:
         """Registra a direção do próximo passo (no máximo um comando válido por passo)."""
@@ -70,9 +82,17 @@ class Game:
         if not (0 <= head[0] < self.width and 0 <= head[1] < self.height):
             self.status = Status.GAME_OVER
             return
-        if head in self._snake[:-1]:
+        eating = head == self.food
+        body = self._snake if eating else self._snake[:-1]
+        if head in body:
             self.status = Status.GAME_OVER
             return
 
         self._snake.insert(0, head)
-        self._snake.pop()
+        if not eating:
+            self._snake.pop()
+            return
+
+        self.food = self._spawn_food()
+        if self.food is None:
+            self.status = Status.WON
