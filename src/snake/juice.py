@@ -12,6 +12,8 @@ PARTICLES_PER_BURST = 16
 PARTICLE_SPEED = (2.5, 7.5)  # casas por segundo
 PULSE_MS = 300
 PULSE_GROWTH = 0.5
+SHAKE_MS = 400
+SHAKE_AMPLITUDE_PX = 8
 
 
 def ease_out(p: float) -> float:
@@ -84,3 +86,34 @@ class ScorePulse:
     def flash(self) -> float:
         p = self._progress
         return 0 if p is None else 1 - p
+
+
+class ScreenShake:
+    def __init__(self, rng: random.Random) -> None:
+        self._rng = rng
+        self._elapsed_ms: float | None = None
+        self.offset: tuple[float, float] = (0, 0)
+
+    def trigger(self) -> None:
+        self._elapsed_ms = 0.0
+        self.offset = (0, 0)
+
+    @property
+    def amplitude(self) -> float:
+        if self._elapsed_ms is None:
+            return 0.0
+        return SHAKE_AMPLITUDE_PX * max(0.0, 1 - self._elapsed_ms / SHAKE_MS)
+
+    @property
+    def done(self) -> bool:
+        return self._elapsed_ms is not None and self._elapsed_ms >= SHAKE_MS
+
+    def update(self, dt_ms: float) -> None:
+        if self._elapsed_ms is None or self.done:
+            return
+        self._elapsed_ms += dt_ms
+        if self.done:
+            self.offset = (0, 0)
+            return
+        a = self.amplitude
+        self.offset = (self._rng.uniform(-a, a), self._rng.uniform(-a, a))

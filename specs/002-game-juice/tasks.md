@@ -83,14 +83,14 @@ o comportamento da 001. Todas as histórias dependem dele.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T015 [P] [US2] Test in `tests/test_juice.py`: `ScreenShake` offset stays within the decaying amplitude (8 px → 0); after 400 ms ("SHAKE_MS = 400") `done` is True and `offset == (0, 0)`; idle offset is `(0, 0)`; deterministic with equally seeded RNGs
-- [ ] T016 [US2] Test in `tests/test_flow.py`: `GAME_OVER` enters `SHAKING` (no menu yet) and only after the shake is done reaches the menu; `WON` reaches the menu without shaking; inputs are ignored during `SHAKING`
+- [X] T015 [P] [US2] Test in `tests/test_juice.py`: `ScreenShake` offset stays within the decaying amplitude (8 px → 0); after 400 ms ("SHAKE_MS = 400") `done` is True and `offset == (0, 0)`; idle offset is `(0, 0)`; deterministic with equally seeded RNGs
+- [X] T016 [US2] Test in `tests/test_flow.py`: `GAME_OVER` enters `SHAKING` (no menu yet) and only after the shake is done reaches the menu; `WON` reaches the menu without shaking; inputs are ignored during `SHAKING`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Implement `ScreenShake` in `src/snake/juice.py`
-- [ ] T018 [US2] Add the `SHAKING` phase to `src/snake/flow.py` (trigger on `GAME_OVER`, go to menu when `shake.done`)
-- [ ] T019 [US2] In `src/snake/app.py`: offset the board drawing by `flow.shake.offset`
+- [X] T017 [P] [US2] Implement `ScreenShake` in `src/snake/juice.py`
+- [X] T018 [US2] Add the `SHAKING` phase to `src/snake/flow.py` (trigger on `GAME_OVER`, go to menu when `shake.done`)
+- [X] T019 [US2] In `src/snake/app.py`: offset the board drawing by `flow.shake.offset`
 
 **Checkpoint**: `pytest` verde; colidir treme a tela e só então abre o menu.
 

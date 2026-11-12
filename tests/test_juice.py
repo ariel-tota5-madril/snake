@@ -1,6 +1,6 @@
 import random
 
-from snake.juice import ParticleBurst, ScorePulse, ease_out
+from snake.juice import SHAKE_AMPLITUDE_PX, ParticleBurst, ScorePulse, ScreenShake, ease_out
 
 
 # T008
@@ -53,3 +53,33 @@ def test_score_pulse_restarts_when_triggered_mid_pulse():
     pulse.trigger()
     pulse.update(100)
     assert pulse.scale > 1  # se não reiniciasse, já teria terminado (350 ms > 300 ms)
+
+
+# T015
+def test_screen_shake_stays_within_decaying_amplitude_and_ends_at_origin():
+    shake = ScreenShake(random.Random(3))
+    assert shake.offset == (0, 0)
+    shake.trigger()
+    amplitudes = []
+    for _ in range(7):  # 7 x 50 ms = 350 ms
+        shake.update(50)
+        dx, dy = shake.offset
+        limit = shake.amplitude
+        amplitudes.append(limit)
+        assert abs(dx) <= limit and abs(dy) <= limit
+        assert not shake.done
+    assert amplitudes == sorted(amplitudes, reverse=True)
+    assert amplitudes[0] <= SHAKE_AMPLITUDE_PX
+    shake.update(50)  # 400 ms
+    assert shake.done
+    assert shake.offset == (0, 0)
+
+
+def test_screen_shake_is_deterministic_for_equal_seeds():
+    a, b = ScreenShake(random.Random(9)), ScreenShake(random.Random(9))
+    a.trigger(); b.trigger()
+    offsets = []
+    for _ in range(5):
+        a.update(40); b.update(40)
+        offsets.append((a.offset, b.offset))
+    assert all(x == y for x, y in offsets)

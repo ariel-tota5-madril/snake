@@ -85,8 +85,11 @@ def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow, me
 
 
 def draw(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
-    draw_board(screen, flow)
-    draw_particles(screen, flow)
+    world = pygame.Surface(screen.get_size())
+    draw_board(world, flow)
+    draw_particles(world, flow)
+    screen.fill(BACKGROUND)
+    screen.blit(world, flow.shake.offset)
     draw_score(screen, font, flow)
     if flow.menu is not None:
         draw_end_menu(screen, font, flow, flow.menu)

@@ -7,7 +7,7 @@ import random
 from enum import Enum
 
 from snake.core import Direction, Game, Status
-from snake.juice import ParticleBurst, ScorePulse
+from snake.juice import ParticleBurst, ScorePulse, ScreenShake
 from snake.menu import EndMenu, MenuOption
 
 STEP_MS = 125  # 8 passos por segundo (001)
@@ -34,6 +34,7 @@ class Flow:
         self._fx_rng = random.Random(f"juice-{seed}")
         self.bursts: list[ParticleBurst] = []
         self.pulse = ScorePulse()
+        self.shake = ScreenShake(self._fx_rng)
         self.menu: EndMenu | None = None
         self.quit_requested = False
         self.phase = Phase.PLAYING
@@ -70,6 +71,10 @@ class Flow:
         self._update_effects(dt_ms)
         if self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
+        elif self.phase is Phase.SHAKING:
+            self.shake.update(dt_ms)
+            if self.shake.done:
+                self._open_menu()
 
     def _update_effects(self, dt_ms: float) -> None:
         for burst in self.bursts:
@@ -86,9 +91,15 @@ class Flow:
             if self.game.score > score_before:
                 self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
                 self.pulse.trigger()
-        if self.game.status is not Status.RUNNING:
-            self.menu = EndMenu()
-            self._go(Phase.MENU)
+        if self.game.status is Status.GAME_OVER:
+            self.shake.trigger()
+            self._go(Phase.SHAKING)
+        elif self.game.status is Status.WON:
+            self._open_menu()
+
+    def _open_menu(self) -> None:
+        self.menu = EndMenu()
+        self._go(Phase.MENU)
 
     def _go(self, phase: Phase) -> None:
         self.phase = phase

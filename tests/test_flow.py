@@ -163,3 +163,31 @@ def test_effects_keep_updating_after_game_over():
     for _ in range(20):
         flow.update(50)
     assert flow.bursts == []
+
+
+# T016
+def test_game_over_shakes_before_showing_the_menu():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    while flow.phase is Phase.PLAYING:
+        flow.update(STEP_MS)
+    assert flow.game.status is Status.GAME_OVER
+    assert flow.phase is Phase.SHAKING
+    assert flow.menu is None
+    flow.direction(Direction.DOWN)  # ignorado durante o tremor
+    flow.confirm()
+    assert flow.phase is Phase.SHAKING and not flow.quit_requested
+    flow.update(399)
+    assert flow.phase is Phase.SHAKING
+    flow.update(1)
+    assert flow.shake.offset == (0, 0)
+    assert flow.phase is not Phase.SHAKING
+    assert flow.menu is not None and flow.menu.selected is MenuOption.RESTART
+
+
+def test_win_goes_to_menu_without_shaking():
+    flow = to_playing(Flow(seed=1, width=4, height=1))
+    flow.update(STEP_MS)
+    assert flow.game.status is Status.WON
+    assert flow.phase is not Phase.SHAKING
+    assert flow.menu is not None
