@@ -13,6 +13,8 @@
 ### Session 2026-11-12
 
 - Q: O que deve acontecer quando a cabeça da cobra bate na borda da grade ou no próprio corpo? → A: Game over na parede e no corpo; a partida termina e mostra a pontuação final.
+- Q: O que acontece ao bater em qualquer borda da grade e como o jogador volta a jogar? → A: A partida passa para Game Over, exibe a pontuação final e pode ser reiniciada com a barra de espaço.
+- Q: Como o jogador escolhe no menu de fim de partida, e ele também aparece na vitória? → A: Menu "Restart"/"Quit" em Game Over e na vitória; ↑/↓ escolhem (começa em "Restart"); Espaço ou Enter confirmam.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -42,6 +44,15 @@ direção com as setas. Entrega valor sozinha como "cobra controlável na tela".
    acontece, **Then** a partida termina e a pontuação final é exibida.
 6. **Given** a cobra prestes a entrar em uma casa do próprio corpo, **When** o próximo passo
    acontece, **Then** a partida termina e a pontuação final é exibida.
+7. **Given** a partida acabou de terminar (Game Over ou vitória), **When** a tela é exibida,
+   **Then** aparecem a pontuação final e um menu com "Restart" e "Quit", com "Restart"
+   selecionado.
+8. **Given** o menu de fim de partida com "Restart" selecionado, **When** o jogador pressiona
+   Espaço ou Enter, **Then** uma nova partida começa no estado inicial, com pontuação 0.
+9. **Given** o menu de fim de partida, **When** o jogador pressiona ↓ e depois Espaço ou Enter,
+   **Then** "Quit" é escolhido e o jogo fecha.
+10. **Given** uma partida em andamento, **When** o jogador pressiona Espaço ou Enter,
+    **Then** nada acontece.
 
 ---
 
@@ -93,7 +104,9 @@ de comidas comidas.
   e a pontuação final é exibida; a cobra não avança para fora da grade.
 - **Colisão com o próprio corpo**: se a cabeça entraria em uma casa ocupada pelo corpo, a
   partida termina (game over) e a pontuação final é exibida.
-- **Depois do game over**: nenhum passo de jogo ou comando altera mais o estado da partida.
+- **Depois do fim da partida**: nenhum passo de jogo ou comando de direção altera o estado da
+  partida; as setas ↑/↓ só movem a seleção do menu, que não sai das duas opções (sem volta
+  circular).
 - **Mover para a casa que a cauda acabou de liberar**: permitido, pois a cauda se desloca no
   mesmo passo (desde que a cobra não esteja crescendo nesse passo).
 - **Grade cheia**: se a cobra ocupar todas as casas e não houver casa livre para a comida, a
@@ -124,6 +137,12 @@ de comidas comidas.
   pelo corpo, a partida DEVE terminar (game over) e a pontuação final DEVE ser exibida.
 - **FR-013**: Após o fim da partida (game over ou vitória), passos de jogo e comandos de
   direção NÃO DEVEM alterar o estado da partida.
+- **FR-014**: Ao fim da partida (Game Over ou vitória), o jogo DEVE exibir a pontuação final e
+  um menu com as opções "Restart" e "Quit", com "Restart" selecionado inicialmente.
+- **FR-015**: No menu de fim de partida, ↑ e ↓ DEVEM mover a seleção entre as duas opções, e
+  Espaço ou Enter DEVEM confirmar: "Restart" inicia uma nova partida no estado inicial (FR-002,
+  pontuação 0, nova comida); "Quit" fecha o jogo.
+- **FR-016**: Durante a partida em andamento, Espaço e Enter NÃO DEVEM ter efeito.
 - **FR-012**: Se não houver casa livre para a comida, a partida DEVE terminar com vitória.
 
 ### Key Entities *(include if feature involves data)*
@@ -133,6 +152,7 @@ de comidas comidas.
 - **Comida**: uma casa da grade que, ao ser alcançada pela cabeça, faz a cobra crescer.
 - **Partida**: estado completo do jogo em um instante — grade, cobra, comida, pontuação e
   situação (em andamento, encerrada).
+- **Menu de fim de partida**: opções "Restart" e "Quit" e qual delas está selecionada.
 
 ## Success Criteria *(mandatory)*
 
@@ -156,5 +176,4 @@ de comidas comidas.
   progressiva fica para uma feature futura.
 - Jogo para um jogador, local, controlado por teclado (setas).
 - Pontuação apenas da partida atual; recorde (high score) persistente está fora do escopo.
-- Telas de menu, pausa e reinício estão fora do escopo; ao fim da partida o jogador fecha a
-  janela e abre de novo para jogar outra vez.
+- Menu inicial e pausa estão fora do escopo; o único menu é o de fim de partida (FR-014, FR-015).
