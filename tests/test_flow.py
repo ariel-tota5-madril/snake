@@ -380,6 +380,7 @@ from snake.flow import SoundEvent  # noqa: E402
 EXPECTED_SOUND_EVENTS = {
     "STEP", "EAT", "PULSE_POP", "CRASH", "COUNT", "GO", "NAV", "CONFIRM", "LOSE", "WIN",
     "VOLUME_PREVIEW", "MUSIC_TITLE", "MUSIC_GAME", "MUSIC_STOP", "MUSIC_DUCK", "MUSIC_UNDUCK",
+    "TIMER_TICK", "TIMEOUT_ALARM", "MUSIC_FRENZY", "BOOM",  # 004
 }
 
 
@@ -780,3 +781,438 @@ def test_ignored_keys_make_no_sound():
     flow.confirm()
     flow.escape()
     assert flow.drain_sounds() == []
+
+
+# --- 004: velocidade progressiva -------------------------------------------------------
+
+
+def feed_once(flow: Flow) -> None:
+    """Põe a fruta na frente da cabeça (a cobra anda para a direita) e dá um passo para comer."""
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    flow.game.food = (0, 0)  # longe do caminho
+
+
+# T006 — FR-002/FR-003
+def test_step_interval_shrinks_after_growing():
+    flow = to_playing(Flow(seed=1))
+    feed_once(flow)
+    assert len(flow.game.snake) == 4
+    head = flow.game.snake[0]
+    flow.update(123)
+    assert flow.game.snake[0] == head
+    flow.update(1)  # 124 ms
+    assert flow.game.snake[0] == (head[0] + 1, head[1])
+
+
+def test_several_steps_in_one_update_use_the_recalculated_interval():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(125 + 124)  # come no 1º passo (125 ms); o 2º já usa 124 ms
+    assert flow.game.snake[0] == (hx + 2, hy)
+
+
+def test_restart_brings_back_the_initial_speed():
+    flow = to_playing(Flow(seed=1))
+    feed_once(flow)
+    to_menu(flow)
+    flow.confirm()  # Restart
+    to_playing(flow)
+    flow.game.food = (0, 0)
+    head = flow.game.snake[0]
+    flow.update(124)
+    assert flow.game.snake[0] == head
+    flow.update(1)
+    assert flow.game.snake[0] == (head[0] + 1, head[1])
+
+
+# --- 004: Feeding Frenzy (regras) ------------------------------------------------------
+
+
+def eat_normal_in_front(flow: Flow) -> list:
+    """Põe a fruta normal na frente da cabeça e avança até ela ser comida; devolve os sons."""
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    score = flow.game.score
+    events = []
+    while flow.game.score == score:
+        flow.update(10)
+        events += flow.drain_sounds()
+    return events
+
+
+def into_frenzy(flow: Flow | None = None, score: int = 9) -> tuple[Flow, list]:
+    """Leva a partida ao limiar e avança até o Frenzy estar rodando (cobra andando)."""
+    flow = flow or playing_and_drained()
+    flow.game.score = score
+    events = eat_normal_in_front(flow)
+    assert flow.frenzy is not None
+    for _ in range(1000):
+        if flow.phase is Phase.PLAYING:
+            break
+        flow.update(10)
+        events += flow.drain_sounds()
+    assert flow.phase is Phase.PLAYING and flow.frenzy is not None
+    return flow, events
+
+
+def run_until_normal(flow: Flow) -> list:
+    events = []
+    for _ in range(1000):
+        if flow.phase is Phase.PLAYING and flow.frenzy is None:
+            return events
+        flow.update(10)
+        events += flow.drain_sounds()
+    raise AssertionError(f"não voltou ao normal (fase {flow.phase})")
+
+
+def specials_in_front(flow: Flow, count: int) -> None:
+    hx, hy = flow.game.snake[0]
+    flow.game.specials = {(hx + i, hy): i % 2 for i in range(1, count + 1)}
+
+
+# T014 — FR-004
+def test_frenzy_starts_exactly_at_the_thresholds():
+    flow = playing_and_drained()
+    flow.game.score = 10
+    eat_normal_in_front(flow)  # 11: não é limiar
+    assert flow.frenzy is None
+    flow.game.score = 18
+    eat_normal_in_front(flow)  # 19
+    assert flow.frenzy is None
+    flow, _ = into_frenzy(flow, score=9)  # 10
+    assert flow.frenzy_count == 1
+    specials_in_front(flow, 1)
+    run_until_normal(flow)
+    flow.game.score = 10
+    eat_normal_in_front(flow)  # 11: o próximo é 20
+    assert flow.frenzy is None
+    flow.game.score = 19
+    flow, _ = into_frenzy(flow, score=19)  # 20
+    assert flow.frenzy_count == 2
+    specials_in_front(flow, 1)
+    run_until_normal(flow)
+    flow.game.score = 29
+    eat_normal_in_front(flow)  # 30: não é limiar (o próximo é 40)
+    assert flow.frenzy is None
+
+
+def test_frenzy_start_swaps_music_and_places_specials():
+    flow, events = into_frenzy()
+    assert events.index(SoundEvent.MUSIC_STOP) < events.index(SoundEvent.MUSIC_FRENZY)
+    assert flow.game.in_frenzy and flow.game.food is None
+    assert len(flow.game.specials) == 10
+    assert flow.frenzy.seconds_left == 20
+    assert flow.timer_visible
+
+
+def test_frenzy_steps_use_the_bonus_interval():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    interval = 124 / 1.5  # comprimento 4
+    head = flow.game.snake[0]
+    flow.update(interval - 1)
+    assert flow.game.snake[0] == head
+    flow.update(1)
+    assert flow.game.snake[0] == (head[0] + 1, head[1])
+
+
+def test_eating_a_special_keeps_score_and_length_with_colored_particles():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.update(70)  # sem passo ainda; o "pop" da fruta normal (60 ms) já passou
+    flow.drain_sounds()
+    specials_in_front(flow, 2)
+    flow.game.specials[(0, 0)] = 0  # sobra uma para o modo não terminar
+    score, length = flow.game.score, len(flow.game.snake)
+    flow.bursts = []
+    flow.update(124 / 1.5 - 70)
+    events = flow.drain_sounds()
+    assert SoundEvent.EAT in events and SoundEvent.PULSE_POP not in events
+    assert (flow.game.score, len(flow.game.snake)) == (score, length)
+    assert [b.tint for b in flow.bursts] == ["gold"]  # variante 1 → dourada
+    flow.update(200)
+    assert SoundEvent.PULSE_POP not in flow.drain_sounds()
+
+
+def test_timer_only_runs_while_the_snake_moves():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.update(50)
+    assert flow.frenzy.remaining_ms == 20_000 - 50
+    paused(flow)
+    flow.update(5_000)
+    flow.confirm()  # Continuar
+    while flow.phase is not Phase.PLAYING:
+        flow.update(50)
+    assert flow.frenzy.remaining_ms == 20_000 - 50
+
+
+def test_last_seconds_tick_and_pulse_the_timer():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.frenzy.remaining_ms = 5_050
+    flow.update(50)
+    assert SoundEvent.TIMER_TICK in flow.drain_sounds()
+    assert flow.timer_pulse.scale != 1 or flow.timer_pulse.flash > 0
+    flow.update(500)
+    assert SoundEvent.TIMER_TICK not in flow.drain_sounds()
+
+
+def test_eating_the_last_special_returns_to_normal_with_the_same_length():
+    flow, _ = into_frenzy()
+    length = len(flow.game.snake)
+    specials_in_front(flow, 1)
+    events = run_until_normal(flow)
+    assert SoundEvent.MUSIC_GAME in events
+    assert not flow.game.in_frenzy and flow.game.food is not None
+    assert len(flow.game.snake) == length
+    assert not flow.timer_visible
+
+
+def test_last_special_wins_over_time_running_out_in_the_same_frame():
+    flow, _ = into_frenzy()
+    specials_in_front(flow, 1)
+    flow.frenzy.remaining_ms = 10
+    flow.update(124 / 1.5)  # come a última e o tempo zera no mesmo quadro
+    assert flow.game.status is Status.RUNNING
+    assert flow.phase is not Phase.TIMEOUT
+    run_until_normal(flow)
+
+
+def test_time_running_out_is_a_game_over_with_its_own_signal():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.update(200)  # o mini tremor da última fruta normal (150 ms) termina
+    flow.frenzy.remaining_ms = 30
+    flow.update(30)
+    events = flow.drain_sounds()
+    assert flow.phase is Phase.TIMEOUT
+    assert flow.game.status is Status.GAME_OVER
+    assert SoundEvent.MUSIC_STOP in events and SoundEvent.TIMEOUT_ALARM in events
+    assert SoundEvent.CRASH not in events
+    assert flow.shake.done
+    assert flow.timer_visible and flow.frenzy.seconds_left == 0
+    blinks = set()
+    for _ in range(8):
+        blinks.add(flow.timeout_blink)
+        flow.update(150)
+        if flow.phase is not Phase.TIMEOUT:
+            break
+    assert blinks == {True, False}
+
+
+def test_timeout_leads_to_the_end_menu_with_lose_jingle():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.frenzy.remaining_ms = 1
+    flow.update(1)
+    assert flow.phase is Phase.TIMEOUT
+    flow.direction(Direction.UP)
+    flow.confirm()
+    flow.escape()
+    assert flow.phase is Phase.TIMEOUT  # teclas ignoradas
+    flow.drain_sounds()
+    flow.update(1_199)
+    assert flow.phase is Phase.TIMEOUT
+    flow.update(1)
+    assert flow.phase is Phase.MENU_IN
+    assert SoundEvent.LOSE in flow.drain_sounds()
+    assert flow.frenzy is None
+
+
+def test_collision_during_frenzy_is_a_normal_game_over():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    events = []
+    while flow.phase is Phase.PLAYING:
+        flow.update(50)
+        events += flow.drain_sounds()
+    assert flow.phase is Phase.SHAKING
+    assert SoundEvent.CRASH in events
+    assert flow.frenzy is None
+
+
+def test_restart_resets_the_frenzy_sequence():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    to_menu(flow)
+    flow.confirm()  # Restart
+    to_playing(flow)
+    assert flow.frenzy is None and flow.frenzy_count == 0
+    assert not flow.game.in_frenzy
+    flow, _ = into_frenzy(flow, score=9)  # o primeiro limiar volta a ser 10
+    assert flow.frenzy_count == 1
+
+
+def test_pause_to_title_resets_the_frenzy():
+    flow, _ = into_frenzy()
+    paused(flow)
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)  # "Tela inicial"
+    flow.confirm()
+    while flow.phase is not Phase.TITLE:
+        flow.update(50)
+    assert flow.frenzy is None and flow.frenzy_count == 0
+    assert not flow.game.in_frenzy
+
+
+# --- 004: abertura "FEEDING FRENZY" ---------------------------------------------------
+
+
+def at_intro() -> tuple[Flow, list]:
+    flow = playing_and_drained()
+    flow.game.score = 9
+    events = eat_normal_in_front(flow)
+    assert flow.phase is Phase.FRENZY_INTRO and flow.phase_ms == 0
+    return flow, events
+
+
+def tinted(flow: Flow, tint: str) -> int:
+    return sum(1 for b in flow.bursts if b.tint == tint)
+
+
+# T021 — FR-013/FR-014/FR-015
+def test_threshold_opens_the_intro_with_everything_stopped():
+    flow, events = at_intro()
+    assert SoundEvent.MUSIC_STOP in events and SoundEvent.MUSIC_FRENZY not in events
+    assert len(flow.game.specials) == 10
+    head = flow.game.snake[0]
+    flow.update(1_000)
+    assert flow.game.snake[0] == head  # cobra parada
+    assert flow.frenzy.remaining_ms == 20_000  # cronômetro parado
+    assert not flow.timer_visible  # o cronômetro só aparece no fim da abertura
+
+
+def test_stamps_fall_from_4x_to_1x_with_ease_in():
+    flow, _ = at_intro()
+    flow.update(199)
+    assert flow.stamp_scales == (None, None)
+    flow.update(1)  # 200 ms
+    assert flow.stamp_scales == (4.0, None)
+    flow.update(150)  # 350 ms: metade da queda com ease_in -> 4 - 3 * 0,25
+    assert flow.stamp_scales[0] == 3.25
+    flow.update(150)  # 500 ms
+    assert flow.stamp_scales == (1.0, None)
+    flow.update(299)  # 799 ms
+    assert flow.stamp_scales == (1.0, None)
+    flow.update(1)  # 800 ms
+    assert flow.stamp_scales == (1.0, 4.0)
+    flow.update(300)  # 1 100 ms
+    assert flow.stamp_scales == (1.0, 1.0)
+
+
+def test_each_impact_booms_shakes_and_spreads_debris():
+    flow, _ = at_intro()
+    flow.update(499)
+    assert SoundEvent.BOOM not in flow.drain_sounds()
+    assert tinted(flow, "purple") == 0
+    flow.update(1)  # 500 ms: FEEDING bate
+    assert flow.drain_sounds().count(SoundEvent.BOOM) == 1
+    assert tinted(flow, "purple") == 5
+    assert not flow.shake.done
+    flow.update(599)
+    assert SoundEvent.BOOM not in flow.drain_sounds()
+    flow.update(1)  # 1 100 ms: FRENZY bate
+    assert flow.drain_sounds().count(SoundEvent.BOOM) == 1
+    assert tinted(flow, "gold") == 5
+    assert not flow.shake.done
+
+
+def test_stamps_fade_out_then_frenzy_music_and_timer_start():
+    flow, _ = at_intro()
+    flow.update(1_600)
+    assert flow.stamp_alpha == 1.0
+    flow.update(150)
+    assert abs(flow.stamp_alpha - 0.5) < 1e-9
+    flow.drain_sounds()
+    flow.update(149)
+    assert flow.phase is Phase.FRENZY_INTRO
+    flow.update(1)  # 1 900 ms
+    assert flow.phase is Phase.PLAYING
+    assert SoundEvent.MUSIC_FRENZY in flow.drain_sounds()
+    assert flow.frenzy.remaining_ms == 20_000
+    flow.update(50)
+    assert flow.frenzy.remaining_ms == 20_000 - 50
+
+
+def test_keys_are_ignored_during_the_intro():
+    flow, _ = at_intro()
+    flow.drain_sounds()
+    flow.escape()
+    flow.confirm()
+    flow.direction(Direction.UP)
+    assert flow.phase is Phase.FRENZY_INTRO
+    assert flow.drain_sounds() == []
+    flow.update(1_900)
+    assert flow.game.direction is Direction.RIGHT
+
+
+def test_stamp_origins_are_on_a_diagonal_around_the_center():
+    flow, _ = at_intro()
+    (fx, fy), (zx, zy) = flow.stamp_origins
+    cx, cy = flow.game.width / 2, flow.game.height / 2
+    assert fx < cx < zx and fy < cy < zy
+
+
+# --- 004: "SURVIVED!" -------------------------------------------------------------------
+
+
+def survived_flow() -> tuple[Flow, list, int]:
+    flow, _ = into_frenzy()
+    length = len(flow.game.snake)
+    specials_in_front(flow, 1)
+    events = []
+    while flow.phase is Phase.PLAYING:
+        flow.update(10)
+        events += flow.drain_sounds()
+    return flow, events, length
+
+
+# T025 — FR-017
+def test_last_special_opens_survived_with_the_game_stopped():
+    flow, events, length = survived_flow()
+    assert flow.phase is Phase.SURVIVED
+    assert SoundEvent.MUSIC_STOP in events
+    assert not flow.game.in_frenzy and flow.game.food is not None
+    assert len(flow.game.snake) == length
+    assert not flow.timer_visible
+    head = flow.game.snake[0]
+    flow.update(1_000)
+    assert flow.game.snake[0] == head
+
+
+def test_survived_word_eases_in_holds_and_leaves():
+    flow, _, _ = survived_flow()
+    assert flow.survived_progress == 0
+    flow.update(250)
+    assert 0 < flow.survived_progress < 1
+    flow.update(250)  # 500 ms
+    assert flow.survived_progress == 1
+    flow.update(500)  # 1 000 ms
+    assert flow.survived_progress == 1
+    flow.update(250)
+    assert 0 < flow.survived_progress < 1
+    flow.update(249)  # 1 499 ms
+    assert flow.phase is Phase.SURVIVED
+
+
+def test_survived_ends_back_in_normal_play_with_game_music():
+    flow, _, length = survived_flow()
+    flow.escape()
+    flow.confirm()
+    flow.direction(Direction.UP)
+    assert flow.phase is Phase.SURVIVED  # teclas ignoradas
+    flow.drain_sounds()
+    flow.update(1_500)
+    assert flow.phase is Phase.PLAYING
+    assert SoundEvent.MUSIC_GAME in flow.drain_sounds()
+    assert flow.game.direction is Direction.RIGHT
+    head = flow.game.snake[0]
+    flow.game.food = (0, 0)
+    flow.update(124 - 1)  # velocidade normal para o comprimento 4
+    assert flow.game.snake[0] == head
+    flow.update(1)
+    assert flow.game.snake[0] != head

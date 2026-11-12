@@ -2,7 +2,15 @@ import random
 
 import pytest
 
-from snake.juice import COLLISION_SHAKE, EAT_SHAKE, ParticleBurst, ScorePulse, ScreenShake, ease_out
+from snake.juice import (
+    COLLISION_SHAKE,
+    EAT_SHAKE,
+    ParticleBurst,
+    ScorePulse,
+    ScreenShake,
+    ease_in,
+    ease_out,
+)
 
 
 # T008
@@ -136,3 +144,37 @@ def test_score_pulse_minimum_is_the_dip():
         scales.append(pulse.scale)
     assert max(scales) == pytest.approx(1.8)
     assert min(scales) == pytest.approx(0.9)
+
+
+# 004 / T003 — ease_in para o carimbo e explosões configuráveis (detritos, partículas coloridas)
+def test_ease_in_is_quadratic_and_clamped():
+    assert ease_in(0) == 0
+    assert ease_in(0.5) == 0.25
+    assert ease_in(1) == 1
+    assert ease_in(-1) == 0
+    assert ease_in(2) == 1
+
+
+def test_particle_burst_accepts_count_speed_life_and_tint():
+    burst = ParticleBurst((5.0, 5.0), random.Random(2), count=12, speed=(6, 14), life_ms=900, tint="purple")
+    assert len(burst.particles) == 12
+    assert burst.tint == "purple"
+    for p in burst.particles:
+        assert 6 - 1e-9 <= (p.vx**2 + p.vy**2) ** 0.5 <= 14 + 1e-9
+    burst.update(800)
+    assert not burst.done
+    assert all(0 < p.life < 1 for p in burst.particles)
+    burst.update(100)
+    assert burst.done
+
+
+def test_particle_burst_defaults_are_unchanged():
+    burst = ParticleBurst((0.0, 0.0), random.Random(4))
+    assert len(burst.particles) == 16
+    assert burst.tint == "fruit"
+    for p in burst.particles:
+        assert 2.5 - 1e-9 <= (p.vx**2 + p.vy**2) ** 0.5 <= 7.5 + 1e-9
+    burst.update(599)
+    assert not burst.done
+    burst.update(1)
+    assert burst.done

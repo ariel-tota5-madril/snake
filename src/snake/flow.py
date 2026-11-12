@@ -6,12 +6,24 @@ O Flow não toca som: ele só registra eventos sonoros que o adaptador de áudio
 Transições seguem specs/002-game-juice/data-model.md e specs/003-audio-sfx-bgm/data-model.md.
 """
 
+import math
 import random
 from enum import Enum
 from pathlib import Path
 
 from snake.core import Direction, Game, Status
-from snake.juice import COLLISION_SHAKE, EAT_SHAKE, ParticleBurst, ScorePulse, ScreenShake, ease_out
+from snake.frenzy import SPECIAL_COUNT, Frenzy, step_interval_ms, threshold
+from snake.juice import (
+    COLLISION_SHAKE,
+    EAT_SHAKE,
+    STAMP_SHAKE,
+    ParticleBurst,
+    ScorePulse,
+    ScreenShake,
+    ease_in,
+    ease_in_out,
+    ease_out,
+)
 from snake.menu import (
     PAUSE_OPTIONS,
     SETTINGS_OPTIONS,
@@ -22,12 +34,27 @@ from snake.menu import (
 )
 from snake.settings import AudioSettings
 
-STEP_MS = 125  # 8 passos por segundo (001)
+STEP_MS = 125  # intervalo inicial (001); na 004 o passo segue frenzy.step_interval_ms
 UI_ANIM_MS = 300
 COUNTDOWN_MS = 3000
 RESUME_MS = 1500  # contagem rápida ao sair da pausa (003)
 RESUME_STEP_MS = 500
 PULSE_POP_DELAY_MS = 60  # pico do pulso do placar (002)
+TIMEOUT_MS = 1200  # 004: "0" piscando + alarme antes do menu de fim
+TIMEOUT_BLINK_MS = 150
+SPECIAL_TINTS = ("purple", "gold")  # variante da fruta especial -> rótulo de cor
+# Abertura do Frenzy (research.md §6 da 004): duas palavras carimbadas na diagonal
+INTRO_MS = 1900
+STAMP_DROP_AT = (200, 800)  # início da queda de "FEEDING" e de "FRENZY"
+STAMP_DROP_MS = 300
+STAMP_START_SCALE = 4.0
+STAMP_FADE_AT, STAMP_FADE_MS = 1600, 300
+STAMP_ANGLE_DEG = 15  # sobe para a direita
+STAMP_OFFSET = (3.0, 2.5)  # deslocamento (em casas) de cada palavra em relação ao centro
+STAMP_HALF_LENGTH = 5.0  # meia largura da palavra, em casas: onde os detritos se espalham
+SURVIVED_MS = 1500  # "SURVIVED!": entra em 500 ms, fica até 1 000 ms, sai até 1 500 ms
+SURVIVED_IN_MS, SURVIVED_OUT_AT = 500, 1000
+DEBRIS_BURSTS, DEBRIS_COUNT, DEBRIS_SPEED, DEBRIS_LIFE_MS = 5, 12, (6, 14), 900
 GRID = 30  # grade 30x30 (FR-014 da 002); o padrão 20x20 do núcleo continua sendo o da 001
 
 
@@ -50,6 +77,10 @@ class SoundEvent(Enum):
     MUSIC_STOP = "music_stop"
     MUSIC_DUCK = "music_duck"
     MUSIC_UNDUCK = "music_unduck"
+    TIMER_TICK = "timer_tick"  # 004: últimos 5 s do Frenzy
+    TIMEOUT_ALARM = "timeout_alarm"  # 004: tempo do Frenzy esgotado
+    MUSIC_FRENZY = "music_frenzy"  # 004: música tensa do Frenzy
+    BOOM = "boom"  # 004: impacto de cada palavra da abertura
 
 
 class Phase(Enum):
@@ -69,6 +100,9 @@ class Phase(Enum):
     OPTIONS_IN = "options_in"
     OPTIONS = "options"
     OPTIONS_OUT = "options_out"
+    TIMEOUT = "timeout"  # 004: tempo do Frenzy esgotado
+    FRENZY_INTRO = "frenzy_intro"  # 004: "FEEDING" / "FRENZY" carimbadas
+    SURVIVED = "survived"  # 004: "SURVIVED!" ao superar o Frenzy
 
 
 ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN}
@@ -116,6 +150,10 @@ class Flow:
         self._options_origin = Phase.TITLE
         self._pause_exit = MenuOption.CONTINUE
         self._last_number: int | None = None
+        self.frenzy: Frenzy | None = None  # cronômetro do Feeding Frenzy (004)
+        self.frenzy_count = 0
+        self.timer_pulse = ScorePulse()
+        self._impacts = 0
         self._enter_title()
 
     # --- consultas ------------------------------------------------------------------------
@@ -150,6 +188,54 @@ class Flow:
     def options_origin(self) -> Phase:
         """Tela de onde as Opções foram abertas (TITLE, PAUSE ou MENU)."""
         return self._options_origin
+
+    @property
+    def timer_visible(self) -> bool:
+        """Cronômetro do Frenzy na tela: com o modo ativo (inclusive pausado) e no tempo esgotado."""
+        return self.frenzy is not None and self.phase is not Phase.FRENZY_INTRO
+
+    @property
+    def timeout_blink(self) -> bool:
+        """No tempo esgotado, o "0" vermelho alterna aceso/apagado a cada 150 ms."""
+        return self.phase is Phase.TIMEOUT and int(self.phase_ms // TIMEOUT_BLINK_MS) % 2 == 0
+
+    @property
+    def stamp_origins(self) -> tuple[tuple[float, float], tuple[float, float]]:
+        """Centro (em casas) de "FEEDING" (acima/esquerda) e "FRENZY" (abaixo/direita)."""
+        cx, cy = self.game.width / 2, self.game.height / 2
+        ox, oy = STAMP_OFFSET
+        return (cx - ox, cy - oy), (cx + ox, cy + oy)
+
+    @property
+    def stamp_scales(self) -> tuple[float | None, float | None]:
+        """Escala de cada palavra na abertura: None antes de entrar, 4x caindo até 1x."""
+        if self.phase is not Phase.FRENZY_INTRO:
+            return (None, None)
+        scales = []
+        for start in STAMP_DROP_AT:
+            if self.phase_ms < start:
+                scales.append(None)
+            else:
+                t = (self.phase_ms - start) / STAMP_DROP_MS
+                scales.append(STAMP_START_SCALE - (STAMP_START_SCALE - 1) * ease_in(t))
+        return tuple(scales)
+
+    @property
+    def stamp_alpha(self) -> float:
+        if self.phase is not Phase.FRENZY_INTRO:
+            return 0.0
+        return 1.0 - min(max((self.phase_ms - STAMP_FADE_AT) / STAMP_FADE_MS, 0.0), 1.0)
+
+    @property
+    def survived_progress(self) -> float:
+        """0 → 1 na entrada suave, 1 enquanto fica, 1 → 0 na saída; 0 fora de SURVIVED."""
+        if self.phase is not Phase.SURVIVED:
+            return 0.0
+        if self.phase_ms < SURVIVED_IN_MS:
+            return ease_in_out(self.phase_ms / SURVIVED_IN_MS)
+        if self.phase_ms < SURVIVED_OUT_AT:
+            return 1.0
+        return 1 - ease_in_out((self.phase_ms - SURVIVED_OUT_AT) / (SURVIVED_MS - SURVIVED_OUT_AT))
 
     @property
     def game_frozen(self) -> bool:
@@ -232,6 +318,7 @@ class Flow:
             self._go(Phase.COUNTDOWN)
         elif self.phase is Phase.MENU_OUT and self.phase_ms >= UI_ANIM_MS:
             self.game.restart()
+            self._reset_frenzy()
             self.menu = None
             self._go(Phase.COUNTDOWN)
         elif self.phase is Phase.PAUSE_OUT and self.phase_ms >= UI_ANIM_MS:
@@ -248,6 +335,13 @@ class Flow:
         elif self.phase is Phase.RESUME and self.phase_ms >= RESUME_MS:
             self._go(Phase.PLAYING)  # sem passo imediato nem passos acumulados
             self._emit(SoundEvent.GO)
+        elif self.phase is Phase.TIMEOUT and self.phase_ms >= TIMEOUT_MS:
+            self._open_menu()
+        elif self.phase is Phase.FRENZY_INTRO:
+            self._update_intro()
+        elif self.phase is Phase.SURVIVED and self.phase_ms >= SURVIVED_MS:
+            self._go(Phase.PLAYING)  # sem passo imediato, como na retomada da pausa
+            self._emit(SoundEvent.MUSIC_GAME)
         elif self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
         elif self.phase is Phase.SHAKING and self.shake.done:
@@ -266,6 +360,7 @@ class Flow:
             burst.update(dt_ms)
         self.bursts = [b for b in self.bursts if not b.done]
         self.pulse.update(dt_ms)
+        self.timer_pulse.update(dt_ms)
         self.shake.update(dt_ms)
         if self._pop_in_ms is not None:
             self._pop_in_ms -= dt_ms
@@ -275,27 +370,122 @@ class Flow:
 
     def _update_playing(self, dt_ms: float) -> None:
         self._step_elapsed += dt_ms
-        while self._step_elapsed >= STEP_MS and self.game.status is Status.RUNNING:
-            self._step_elapsed -= STEP_MS
+        # o intervalo depende do tamanho e é recalculado a cada passo (FR-002/FR-003 da 004)
+        while (
+            self._step_elapsed >= self._interval()
+            and self.game.status is Status.RUNNING
+            and self.phase is Phase.PLAYING
+            and not self._frenzy_cleared()
+        ):
+            self._step_elapsed -= self._interval()
             self._step_once()
         self._check_end()
+        self._update_frenzy(dt_ms)
+
+    def _interval(self) -> float:
+        return step_interval_ms(len(self.game.snake), frenzy=self.game.in_frenzy)
 
     def _step_once(self) -> None:
         score_before = self.game.score
+        specials_before = dict(self.game.specials)
         self.game.step()
         if self.game.status is Status.RUNNING:
             self._emit(SoundEvent.STEP)
+        head = self.game.snake[0]
+        if head in specials_before and head not in self.game.specials:
+            # fruta especial: partículas da cor dela e som de coleta, sem pulso (FR-016 da 004)
+            tint = SPECIAL_TINTS[specials_before[head]]
+            self.bursts.append(ParticleBurst(head, self._fx_rng, tint=tint))
+            self.shake.trigger(*EAT_SHAKE)
+            self._emit(SoundEvent.EAT)
         if self.game.score > score_before:
-            self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
+            self.bursts.append(ParticleBurst(head, self._fx_rng))
             self.pulse.trigger()
             self.shake.trigger(*EAT_SHAKE)
             self._emit(SoundEvent.EAT)
             self._pop_in_ms = PULSE_POP_DELAY_MS
+            if self.game.score == threshold(self.frenzy_count):
+                self._start_frenzy()
+
+    # --- Feeding Frenzy (004) -------------------------------------------------------------
+
+    def _frenzy_cleared(self) -> bool:
+        return self.game.in_frenzy and not self.game.specials
+
+    def _start_frenzy(self) -> None:
+        if self.game.start_frenzy(SPECIAL_COUNT) == 0:
+            return  # sem casa livre: o modo não começa
+        self.frenzy_count += 1
+        self.frenzy = Frenzy()
+        self._impacts = 0
+        self._emit(SoundEvent.MUSIC_STOP)
+        self._go(Phase.FRENZY_INTRO)  # cobra e cronômetro parados durante a abertura
+
+    def _update_intro(self) -> None:
+        for i, start in enumerate(STAMP_DROP_AT):
+            if self._impacts == i and self.phase_ms >= start + STAMP_DROP_MS:
+                self._impact(i)
+        if self.phase_ms >= INTRO_MS:
+            self._go(Phase.PLAYING)
+            self._emit(SoundEvent.MUSIC_FRENZY)
+
+    def _impact(self, word: int) -> None:
+        """A palavra bate: boom, tremor e detritos espalhados ao longo dela (FR-014)."""
+        self._impacts += 1
+        self._emit(SoundEvent.BOOM)
+        self.shake.trigger(*STAMP_SHAKE)
+        ox, oy = self.stamp_origins[word]
+        angle = math.radians(STAMP_ANGLE_DEG)
+        dx, dy = math.cos(angle), -math.sin(angle)
+        for k in range(DEBRIS_BURSTS):
+            along = STAMP_HALF_LENGTH * (2 * k / (DEBRIS_BURSTS - 1) - 1)
+            origin = (ox + dx * along - 0.5, oy + dy * along - 0.5)  # -0,5: partículas são casas
+            self.bursts.append(
+                ParticleBurst(
+                    origin,
+                    self._fx_rng,
+                    count=DEBRIS_COUNT,
+                    speed=DEBRIS_SPEED,
+                    life_ms=DEBRIS_LIFE_MS,
+                    tint=SPECIAL_TINTS[word],
+                )
+            )
+
+    def _update_frenzy(self, dt_ms: float) -> None:
+        """Depois dos passos do quadro: comer a última especial vence o tempo esgotado."""
+        if self.frenzy is None or self.phase is not Phase.PLAYING:
+            return
+        if self.game.status is not Status.RUNNING:
+            return
+        if self._frenzy_cleared():
+            self._frenzy_survived()
+            return
+        for _second in self.frenzy.update(dt_ms):
+            self._emit(SoundEvent.TIMER_TICK)
+            self.timer_pulse.trigger()
+        if self.frenzy.expired:
+            self.game.fail()
+            self._emit(SoundEvent.MUSIC_STOP)
+            self._emit(SoundEvent.TIMEOUT_ALARM)
+            self._go(Phase.TIMEOUT)
+
+    def _frenzy_survived(self) -> None:
+        """Comeu a última especial: partida para e "SURVIVED!" entra (FR-017)."""
+        self.game.end_frenzy()
+        self.frenzy = None
+        self._emit(SoundEvent.MUSIC_STOP)
+        self._go(Phase.SURVIVED)
+
+    def _reset_frenzy(self) -> None:
+        self.frenzy = None
+        self.frenzy_count = 0
+        self.timer_pulse = ScorePulse()
 
     def _check_end(self) -> None:
         if self.phase is not Phase.PLAYING:
             return
         if self.game.status is Status.GAME_OVER:
+            self.frenzy = None  # colisão no Frenzy: fim de jogo normal
             self.shake.trigger(*COLLISION_SHAKE)
             self._emit(SoundEvent.CRASH)
             self._emit(SoundEvent.MUSIC_STOP)
@@ -320,6 +510,7 @@ class Flow:
         self._go(Phase.TITLE_IN)
 
     def _open_menu(self) -> None:
+        self.frenzy = None
         self._emit(SoundEvent.LOSE if self.game.status is Status.GAME_OVER else SoundEvent.WIN)
         self.menu = EndMenu()
         self._go(Phase.MENU_IN)
@@ -349,6 +540,7 @@ class Flow:
             return
         # "Tela inicial": abandona a partida e volta ao começo
         self.game.restart()
+        self._reset_frenzy()
         self.bursts = []
         self.pulse = ScorePulse()
         self.shake = ScreenShake(self._fx_rng)

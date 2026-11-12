@@ -28,8 +28,8 @@ porque o FR-002 mudou a velocidade.
 
 **Purpose**: módulo novo e a guarda de pureza
 
-- [ ] T001 [P] Create `src/snake/frenzy.py` with the module docstring and the constants of data-model.md (`BASE_STEP_MS`, `MIN_STEP_MS`, `START_LENGTH`, `FRENZY_SPEEDUP`, `FRENZY_MIN_STEP_MS`, `FIRST_THRESHOLD`, `FRENZY_MS`, `SPECIAL_COUNT`, `WARNING_SECONDS`)
-- [ ] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.frenzy` imports no `pygame`, `time` or `datetime`
+- [X] T001 [P] Create `src/snake/frenzy.py` with the module docstring and the constants of data-model.md (`BASE_STEP_MS`, `MIN_STEP_MS`, `START_LENGTH`, `FRENZY_SPEEDUP`, `FRENZY_MIN_STEP_MS`, `FIRST_THRESHOLD`, `FRENZY_MS`, `SPECIAL_COUNT`, `WARNING_SECONDS`)
+- [X] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.frenzy` imports no `pygame`, `time` or `datetime`
 
 **Checkpoint**: `pytest` verde; o jogo continua igual ao da 003.
 
@@ -41,8 +41,8 @@ porque o FR-002 mudou a velocidade.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Write failing tests in `tests/test_juice.py`: `ease_in(t) == t²` clamped to [0, 1]; `ParticleBurst(origin, rng, count=12, speed=(6, 14), life_ms=900, tint="purple")` creates 12 particles with speeds in range, is done after 900 ms and exposes `tint`; defaults remain 16 particles, 2.5–7.5 cells/s, 600 ms, `tint == "fruit"`
-- [ ] T004 Implement `ease_in` and the `count`/`speed`/`life_ms`/`tint` parameters of `ParticleBurst` in `src/snake/juice.py`
+- [X] T003 Write failing tests in `tests/test_juice.py`: `ease_in(t) == t²` clamped to [0, 1]; `ParticleBurst(origin, rng, count=12, speed=(6, 14), life_ms=900, tint="purple")` creates 12 particles with speeds in range, is done after 900 ms and exposes `tint`; defaults remain 16 particles, 2.5–7.5 cells/s, 600 ms, `tint == "fruit"`
+- [X] T004 Implement `ease_in` and the `count`/`speed`/`life_ms`/`tint` parameters of `ParticleBurst` in `src/snake/juice.py`
 
 **Checkpoint**: `pytest` verde; o jogo continua igual.
 
@@ -56,14 +56,14 @@ porque o FR-002 mudou a velocidade.
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T005 [P] [US1] Write failing tests in `tests/test_speed.py`: `step_interval_ms(3) == 125`, `(4) == 124`, `(13) == 115`, `(58) == 70`, `(100) == 70`; monotonically non-increasing in length
-- [ ] T006 [P] [US1] Write failing tests in `tests/test_flow.py`: after the snake grows to length 4, the next step happens after 124 ms (not before); several steps in one `update` use the interval recalculated after each step; after Restart the interval is 125 ms again
+- [X] T005 [P] [US1] Write failing tests in `tests/test_speed.py`: `step_interval_ms(3) == 125`, `(4) == 124`, `(13) == 115`, `(58) == 70`, `(100) == 70`; monotonically non-increasing in length
+- [X] T006 [P] [US1] Write failing tests in `tests/test_flow.py`: after the snake grows to length 4, the next step happens after 124 ms (not before); several steps in one `update` use the interval recalculated after each step; after Restart the interval is 125 ms again
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `step_interval_ms(length, frenzy=False)` (normal curve only) in `src/snake/frenzy.py`
-- [ ] T008 [US1] Replace the fixed `STEP_MS` in `Flow._update_playing` with the interval from `step_interval_ms(len(game.snake))`, recalculated after each step, in `src/snake/flow.py`
-- [ ] T009 [US1] Adjust existing timing-dependent tests in `tests/test_flow.py` (and helpers) that assume 125 ms per step after the snake has grown
+- [X] T007 [US1] Implement `step_interval_ms(length, frenzy=False)` (normal curve only) in `src/snake/frenzy.py`
+- [X] T008 [US1] Replace the fixed `STEP_MS` in `Flow._update_playing` with the interval from `step_interval_ms(len(game.snake))`, recalculated after each step, in `src/snake/flow.py`
+- [X] T009 [US1] Adjust existing timing-dependent tests in `tests/test_flow.py` (and helpers) that assume 125 ms per step after the snake has grown
 
 **Checkpoint**: a cobra acelera ao crescer; `pytest` verde; jogável.
 
@@ -77,19 +77,19 @@ porque o FR-002 mudou a velocidade.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T010 [P] [US2] Write failing tests in `tests/test_speed.py`: `step_interval_ms(13, frenzy=True) ≈ 76.67`; `step_interval_ms(100, frenzy=True) == 50`; Frenzy interval is never above the normal one for the same length
-- [ ] T011 [P] [US2] Write failing tests in `tests/test_frenzy.py` for `threshold(n)` (10, 20, 40, 80, 160) and `Frenzy`: starts at 20 000 ms / `seconds_left == 20`; `update` never goes below 0; `seconds_left` is the ceiling; `warning` only for 1–5 s; `expired` only at 0; `update` returns the warning seconds that just started, in order, including several in one big `dt`
-- [ ] T012 [P] [US2] Write failing tests in `tests/test_frenzy.py` for the core: `start_frenzy()` removes the normal food, creates 10 specials on free distinct cells with alternating variants 0/1, returns 10, is reproducible with the same seed, and creates fewer when free cells are scarce (0 → returns 0); in Frenzy, entering a special removes it with no growth and no score; `end_frenzy()` clears specials, respawns normal food and the length equals the length before `start_frenzy()`; `fail()` sets `GAME_OVER`; `restart()` clears specials
-- [ ] T013 [P] [US2] Write failing tests in `tests/test_sounds.py`: `SFX` has `TIMER_TICK` and `TIMEOUT_ALARM`, `MUSIC` has `MUSIC_FRENZY`; the Frenzy song lasts a whole number of bars at 180 BPM and starts/ends near zero
-- [ ] T014 [US2] Write failing tests in `tests/test_flow.py`: Frenzy starts exactly when the score reaches 10, then 20 and 40 (not at 11, 15, 30); on start: `MUSIC_STOP` then `MUSIC_FRENZY`, specials on the board, `frenzy.seconds_left == 20`; steps use the Frenzy interval; eating a special emits `EAT` (no `PULSE_POP`), adds a burst with the fruit's tint, keeps score and length; timer runs only in `PLAYING` (unchanged across pause and resume); `TIMER_TICK` at 5, 4, 3, 2, 1 with `timer_pulse` triggered; last special → back to normal with `MUSIC_GAME`, normal food and the same length; last special in the same frame the timer expires → success; timer expiring with specials left → `TIMEOUT` (`MUSIC_STOP`, `TIMEOUT_ALARM`, no `CRASH`, no shake, `game.status == GAME_OVER`, `timeout_blink` toggles), then after 1 200 ms `MENU_IN` with `LOSE`; collision during Frenzy → normal `SHAKING`; inputs ignored in `TIMEOUT`; Restart and "Tela inicial" reset `frenzy` and `frenzy_count`
+- [X] T010 [P] [US2] Write failing tests in `tests/test_speed.py`: `step_interval_ms(13, frenzy=True) ≈ 76.67`; `step_interval_ms(100, frenzy=True) == 50`; Frenzy interval is never above the normal one for the same length
+- [X] T011 [P] [US2] Write failing tests in `tests/test_frenzy.py` for `threshold(n)` (10, 20, 40, 80, 160) and `Frenzy`: starts at 20 000 ms / `seconds_left == 20`; `update` never goes below 0; `seconds_left` is the ceiling; `warning` only for 1–5 s; `expired` only at 0; `update` returns the warning seconds that just started, in order, including several in one big `dt`
+- [X] T012 [P] [US2] Write failing tests in `tests/test_frenzy.py` for the core: `start_frenzy()` removes the normal food, creates 10 specials on free distinct cells with alternating variants 0/1, returns 10, is reproducible with the same seed, and creates fewer when free cells are scarce (0 → returns 0); in Frenzy, entering a special removes it with no growth and no score; `end_frenzy()` clears specials, respawns normal food and the length equals the length before `start_frenzy()`; `fail()` sets `GAME_OVER`; `restart()` clears specials
+- [X] T013 [P] [US2] Write failing tests in `tests/test_sounds.py`: `SFX` has `TIMER_TICK` and `TIMEOUT_ALARM`, `MUSIC` has `MUSIC_FRENZY`; the Frenzy song lasts a whole number of bars at 180 BPM and starts/ends near zero
+- [X] T014 [US2] Write failing tests in `tests/test_flow.py`: Frenzy starts exactly when the score reaches 10, then 20 and 40 (not at 11, 15, 30); on start: `MUSIC_STOP` then `MUSIC_FRENZY`, specials on the board, `frenzy.seconds_left == 20`; steps use the Frenzy interval; eating a special emits `EAT` (no `PULSE_POP`), adds a burst with the fruit's tint, keeps score and length; timer runs only in `PLAYING` (unchanged across pause and resume); `TIMER_TICK` at 5, 4, 3, 2, 1 with `timer_pulse` triggered; last special → back to normal with `MUSIC_GAME`, normal food and the same length; last special in the same frame the timer expires → success; timer expiring with specials left → `TIMEOUT` (`MUSIC_STOP`, `TIMEOUT_ALARM`, no `CRASH`, no shake, `game.status == GAME_OVER`, `timeout_blink` toggles), then after 1 200 ms `MENU_IN` with `LOSE`; collision during Frenzy → normal `SHAKING`; inputs ignored in `TIMEOUT`; Restart and "Tela inicial" reset `frenzy` and `frenzy_count`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Implement the Frenzy speed bonus, `threshold(n)` and the `Frenzy` timer in `src/snake/frenzy.py`
-- [ ] T016 [US2] Implement `specials`, `in_frenzy`, `start_frenzy()`, `end_frenzy()`, `fail()`, the special-eating rule in `step()` and the cleanup in `restart()` in `src/snake/core.py`
-- [ ] T017 [US2] Add `TIMER_TICK`, `TIMEOUT_ALARM` and `MUSIC_FRENZY` to `SoundEvent` in `src/snake/flow.py` and synthesize the tick, the alarm and the 180 BPM Frenzy song (research.md §9) in `src/snake/sounds.py`
-- [ ] T018 [US2] Implement in `src/snake/flow.py`: `frenzy`, `frenzy_count`, `timer_pulse`, the threshold check after eating, Frenzy steps and timer in `_update_playing` (steps first, then success/timeout), the `TIMEOUT` phase, `timer_visible`, `timeout_blink`, and the reset on Restart / "Tela inicial"
-- [ ] T019 [US2] Draw in `src/snake/app.py`: specials as purple/gold squares with a pulsing halo; tinted particles (`fruit`/`purple`/`gold`); the big timer at the top center with "N restantes" below while the score is hidden; red + pulse in the warning seconds; red blinking "0" in `TIMEOUT`
+- [X] T015 [US2] Implement the Frenzy speed bonus, `threshold(n)` and the `Frenzy` timer in `src/snake/frenzy.py`
+- [X] T016 [US2] Implement `specials`, `in_frenzy`, `start_frenzy()`, `end_frenzy()`, `fail()`, the special-eating rule in `step()` and the cleanup in `restart()` in `src/snake/core.py`
+- [X] T017 [US2] Add `TIMER_TICK`, `TIMEOUT_ALARM` and `MUSIC_FRENZY` to `SoundEvent` in `src/snake/flow.py` and synthesize the tick, the alarm and the 180 BPM Frenzy song (research.md §9) in `src/snake/sounds.py`
+- [X] T018 [US2] Implement in `src/snake/flow.py`: `frenzy`, `frenzy_count`, `timer_pulse`, the threshold check after eating, Frenzy steps and timer in `_update_playing` (steps first, then success/timeout), the `TIMEOUT` phase, `timer_visible`, `timeout_blink`, and the reset on Restart / "Tela inicial"
+- [X] T019 [US2] Draw in `src/snake/app.py`: specials as purple/gold squares with a pulsing halo; tinted particles (`fruit`/`purple`/`gold`); the big timer at the top center with "N restantes" below while the score is hidden; red + pulse in the warning seconds; red blinking "0" in `TIMEOUT`
 
 **Checkpoint**: Frenzy jogável de ponta a ponta (sem abertura e sem "SURVIVED!"); `pytest` verde.
 
@@ -103,14 +103,14 @@ porque o FR-002 mudou a velocidade.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T020 [P] [US3] Write failing tests in `tests/test_sounds.py`: `SFX` has `BOOM` (~600 ms, starts/ends near zero, louder than `EAT`'s relative volume)
-- [ ] T021 [US3] Write failing tests in `tests/test_flow.py`: reaching the threshold goes to `FRENZY_INTRO` (`MUSIC_STOP`, specials already on the board, timer not running, snake does not move); `stamp_scales` is `(None, None)` before 200 ms, FEEDING 4.0 → 1.0 between 200 and 500 ms, FRENZY between 800 and 1 100 ms; `BOOM` exactly at 500 ms and 1 100 ms, each adding 5 bursts (tints `purple`, then `gold`) and a shake; `stamp_alpha` falls from 1 to 0 between 1 600 and 1 900 ms; Esc, arrows and Enter ignored; at 1 900 ms → `PLAYING` with `MUSIC_FRENZY` and the timer at 20 s
+- [X] T020 [P] [US3] Write failing tests in `tests/test_sounds.py`: `SFX` has `BOOM` (~600 ms, starts/ends near zero, louder than `EAT`'s relative volume)
+- [X] T021 [US3] Write failing tests in `tests/test_flow.py`: reaching the threshold goes to `FRENZY_INTRO` (`MUSIC_STOP`, specials already on the board, timer not running, snake does not move); `stamp_scales` is `(None, None)` before 200 ms, FEEDING 4.0 → 1.0 between 200 and 500 ms, FRENZY between 800 and 1 100 ms; `BOOM` exactly at 500 ms and 1 100 ms, each adding 5 bursts (tints `purple`, then `gold`) and a shake; `stamp_alpha` falls from 1 to 0 between 1 600 and 1 900 ms; Esc, arrows and Enter ignored; at 1 900 ms → `PLAYING` with `MUSIC_FRENZY` and the timer at 20 s
 
 ### Implementation for User Story 3
 
-- [ ] T022 [P] [US3] Add `BOOM` to `SoundEvent` in `src/snake/flow.py` and synthesize it in `src/snake/sounds.py` (noise with falling clock + triangle sweep, 600 ms, relative volume 1.0)
-- [ ] T023 [US3] Implement the `FRENZY_INTRO` phase in `src/snake/flow.py` (timeline of research.md §6, `stamp_scales`, `stamp_alpha`, `stamp_origins`, debris bursts and `STAMP_SHAKE`), replacing the direct start of US2
-- [ ] T024 [US3] Draw the stamps in `src/snake/app.py`: words rendered once in a big font with a dark outline, rotated ~15°, scaled per frame by `stamp_scales` and faded by `stamp_alpha`; purple/gold colors
+- [X] T022 [P] [US3] Add `BOOM` to `SoundEvent` in `src/snake/flow.py` and synthesize it in `src/snake/sounds.py` (noise with falling clock + triangle sweep, 600 ms, relative volume 1.0)
+- [X] T023 [US3] Implement the `FRENZY_INTRO` phase in `src/snake/flow.py` (timeline of research.md §6, `stamp_scales`, `stamp_alpha`, `stamp_origins`, debris bursts and `STAMP_SHAKE`), replacing the direct start of US2
+- [X] T024 [US3] Draw the stamps in `src/snake/app.py`: words rendered once in a big font with a dark outline, rotated ~15°, scaled per frame by `stamp_scales` and faded by `stamp_alpha`; purple/gold colors
 
 **Checkpoint**: abertura completa com impacto; `pytest` verde.
 
@@ -124,12 +124,12 @@ porque o FR-002 mudou a velocidade.
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T025 [US4] Write failing tests in `tests/test_flow.py`: eating the last special goes to `SURVIVED` (`MUSIC_STOP`, normal food back, same length, timer hidden, snake stopped); `survived_progress` rises 0 → 1 until 500 ms, stays 1 until 1 000 ms and falls to 0 at 1 500 ms; inputs ignored; at 1 500 ms → `PLAYING` with `MUSIC_GAME` and the normal speed for the length
+- [X] T025 [US4] Write failing tests in `tests/test_flow.py`: eating the last special goes to `SURVIVED` (`MUSIC_STOP`, normal food back, same length, timer hidden, snake stopped); `survived_progress` rises 0 → 1 until 500 ms, stays 1 until 1 000 ms and falls to 0 at 1 500 ms; inputs ignored; at 1 500 ms → `PLAYING` with `MUSIC_GAME` and the normal speed for the length
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Implement the `SURVIVED` phase and `survived_progress` in `src/snake/flow.py`, replacing the direct return to normal of US2
-- [ ] T027 [US4] Draw "SURVIVED!" in light blue in `src/snake/app.py` (alpha, scale 0.85 → 1 and a small rise from `survived_progress`)
+- [X] T026 [US4] Implement the `SURVIVED` phase and `survived_progress` in `src/snake/flow.py`, replacing the direct return to normal of US2
+- [X] T027 [US4] Draw "SURVIVED!" in light blue in `src/snake/app.py` (alpha, scale 0.85 → 1 and a small rise from `survived_progress`)
 
 **Checkpoint**: todas as histórias funcionando; `pytest` verde.
 
@@ -139,8 +139,8 @@ porque o FR-002 mudou a velocidade.
 
 **Purpose**: documentação, desempenho e validação final
 
-- [ ] T028 [P] Update `README.md` with the progressive speed and the Feeding Frenzy rules
-- [ ] T029 Measure frame time during the intro and an active Frenzy with the headless drive (SC-006: p95 under 16.7 ms at 1440×1440) and optimize drawing if needed
+- [X] T028 [P] Update `README.md` with the progressive speed and the Feeding Frenzy rules
+- [X] T029 Measure frame time during the intro and an active Frenzy with the headless drive (SC-006: p95 under 16.7 ms at 1440×1440) and optimize drawing if needed
 - [ ] T030 Run the quickstart.md validation (manual, by the user)
 
 ---

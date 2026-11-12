@@ -78,3 +78,30 @@ def test_go_is_higher_and_longer_than_count():
     count, go = sounds.SFX[SoundEvent.COUNT][0], sounds.SFX[SoundEvent.GO][0]
     assert duration_ms(go) > duration_ms(count)
     assert dominant_crossings_per_ms(go) > dominant_crossings_per_ms(count)
+
+
+# 004 / T013 — sons do cronômetro e música do Frenzy
+def test_frenzy_timer_sounds_exist():
+    for event in (SoundEvent.TIMER_TICK, SoundEvent.TIMEOUT_ALARM):
+        samples, volume = sounds.SFX[event]
+        assert len(samples) > 0
+        assert 0 < volume <= 1
+    assert duration_ms(sounds.SFX[SoundEvent.TIMER_TICK][0]) <= 50
+    assert 400 <= duration_ms(sounds.SFX[SoundEvent.TIMEOUT_ALARM][0]) <= 800
+
+
+def test_frenzy_music_lasts_whole_bars_at_180_bpm_and_loops_without_click():
+    samples = sounds.MUSIC[SoundEvent.MUSIC_FRENZY]
+    bar_ms = 4 * 60000 / 180
+    bars = duration_ms(samples) / bar_ms
+    assert round(bars) >= 4
+    assert abs(bars - round(bars)) * bar_ms <= 20
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO
+
+
+# 004 / T020 — boom do carimbo
+def test_boom_is_long_loud_and_clean():
+    samples, volume = sounds.SFX[SoundEvent.BOOM]
+    assert 500 <= duration_ms(samples) <= 700
+    assert volume > sounds.SFX[SoundEvent.EAT][1]
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO

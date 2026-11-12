@@ -97,9 +97,23 @@ GAME_MELODY = [
 GAME_CHORDS = [("A2", 4), ("F2", 4), ("A2", 4), ("G2", 4), ("C2", 4), ("G2", 4), ("F2", 4), ("E2", 4)]
 
 
+FRENZY_BPM = 180
+_FRENZY_A = ["A4", "C5", "E5", "A5", "E5", "C5", "A4", "C5", "E5", "G5", "E5", "C5", "B4", "C5", "E5", "C5"]
+_FRENZY_F = ["F4", "A4", "C5", "F5", "C5", "A4", "F4", "A4", "C5", "E5", "C5", "A4", "G4", "A4", "C5", "A4"]
+_FRENZY_G = ["G4", "B4", "D5", "G5", "D5", "B4", "G4", "B4", "D5", "F5", "D5", "B4", "A4", "B4", "D5", "B4"]
+_FRENZY_E = ["E4", "G#4", "B4", "E5", "B4", "G#4", "E4", "G#4", "B4", "D5", "B4", "G#4", "F#4", "G#4", "B4", "E5"]
+_FRENZY_END = ["E4", "G#4", "B4", "E5", "B4", "G#4", "B4", "D5"]
+FRENZY_MELODY = (
+    [(n, .25) for n in _FRENZY_A + _FRENZY_F + _FRENZY_G + _FRENZY_E + _FRENZY_A + _FRENZY_F + _FRENZY_G]
+    + [(n, .25) for n in _FRENZY_END] + [("E5", 2)]
+)  # semicolcheias em lá menor: tensa e rápida (004, research.md §9)
+FRENZY_CHORDS = [("A2", 4), ("F2", 4), ("G2", 4), ("E2", 4)] * 2
+
+
 def _music() -> None:
     MUSIC[SoundEvent.MUSIC_TITLE] = song(TITLE_BPM, TITLE_MELODY, TITLE_CHORDS, "square25", 8)
     MUSIC[SoundEvent.MUSIC_GAME] = song(GAME_BPM, GAME_MELODY, GAME_CHORDS, "square50", 8)
+    MUSIC[SoundEvent.MUSIC_FRENZY] = song(FRENZY_BPM, FRENZY_MELODY, FRENZY_CHORDS, "square50", 8)
 
 
 def _jingles() -> None:
@@ -123,9 +137,21 @@ def _ui_sfx() -> None:
     SFX[SoundEvent.VOLUME_PREVIEW] = (SFX[SoundEvent.EAT][0], 0.7)  # amostra = som de coleta
 
 
+def _frenzy_sfx() -> None:
+    SFX[SoundEvent.TIMER_TICK] = (render([Note("square12", 1760, 35, decay=1)]), 0.5)
+    alarm = [Note("square50", f, 100) for f in (880, 660) * 3]
+    SFX[SoundEvent.TIMEOUT_ALARM] = (render(alarm), 0.8)
+    boom = mix(
+        render([Note("noise", 4000, 600, 0.7, freq_end=200, decay=1)]),
+        render([Note("triangle", 110, 600, 0.9, freq_end=40, decay=1)]),
+    )
+    SFX[SoundEvent.BOOM] = (boom, 1.0)  # carimbo "FEEDING"/"FRENZY": o som mais forte do jogo
+
+
 def build() -> None:
     """Gera todos os sons (uma vez, ao abrir o jogo)."""
     _gameplay_sfx()
     _ui_sfx()
+    _frenzy_sfx()
     _music()
     _jingles()

@@ -3,6 +3,7 @@
 Nenhuma regra de jogo nem regra de tela vive aqui (Princípio I da constituição).
 """
 
+import math
 from functools import cache
 from pathlib import Path
 
@@ -10,7 +11,7 @@ import pygame
 
 from snake import audio as audio_module
 from snake.core import Direction, Status
-from snake.flow import RESUME_STEP_MS, UI_ANIM_MS, Flow, Phase, SoundEvent
+from snake.flow import RESUME_STEP_MS, STAMP_ANGLE_DEG, UI_ANIM_MS, Flow, Phase, SoundEvent
 from snake.juice import ease_out
 from snake.menu import Menu, MenuOption
 
@@ -34,6 +35,14 @@ PAUSE_UI = {Phase.PAUSE_IN, Phase.PAUSE, Phase.PAUSE_OUT}
 OPTIONS_UI = {Phase.OPTIONS_IN, Phase.OPTIONS, Phase.OPTIONS_OUT}
 SETTINGS_PATH = Path.home() / ".config" / "snake" / "settings.json"
 SLIDER_BG = (60, 64, 76)
+SPECIAL_COLORS = ((190, 90, 255), (255, 200, 40))  # 004: roxa ("FEEDING") e dourada ("FRENZY")
+TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1]}
+GLOW_PERIOD_MS = 1200
+STAMP_WORDS = (("FEEDING", SPECIAL_COLORS[0]), ("FRENZY", (255, 225, 40)))  # roxo e amarelo
+STAMP_OUTLINE = (15, 10, 25)
+SURVIVED_COLOR = (110, 190, 255)  # azul claro
+TIMER_COLOR = TEXT
+TIMER_WARNING = (255, 70, 70)
 QUIT_SOUND_WAIT_MS = 150  # deixa o som de confirmação do "Quit" tocar (≤ 0,3 s, US3 cenário 4)
 
 KEYS = {
@@ -57,10 +66,40 @@ def draw_board(screen: pygame.Surface, flow: Flow) -> None:
         fx, fy = game.food
         pad = round(3 * S)
         pygame.draw.rect(screen, FOOD, (fx * CELL + pad, fy * CELL + pad, CELL - 2 * pad, CELL - 2 * pad))
+    draw_specials(screen, flow)
     for i, (x, y) in enumerate(game.snake):
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
         gap = round(S)
         pygame.draw.rect(screen, color, (x * CELL + gap, y * CELL + gap, CELL - 2 * gap, CELL - 2 * gap))
+
+
+@cache
+def font_of(size: int) -> pygame.font.Font:
+    return pygame.font.Font(None, size)
+
+
+@cache
+def halo(color: tuple, alpha: int) -> pygame.Surface:
+    """Brilho redondo em volta da fruta especial (cacheado por cor e intensidade)."""
+    size = CELL * 2
+    glow = pygame.Surface((size, size), pygame.SRCALPHA)
+    for r, a in ((CELL * 0.95, alpha // 3), (CELL * 0.75, alpha // 2), (CELL * 0.55, alpha)):
+        pygame.draw.circle(glow, (*color, a), (size / 2, size / 2), r)
+    return glow
+
+
+def draw_specials(screen: pygame.Surface, flow: Flow) -> None:
+    """Frutas especiais roxas e douradas com brilho pulsando suavemente (FR-005 da 004)."""
+    if not flow.game.specials:
+        return
+    wave = (1 + math.sin(2 * math.pi * pygame.time.get_ticks() / GLOW_PERIOD_MS)) / 2
+    alpha = 40 + round(wave * 6) * 10  # degraus de 10: poucos brilhos diferentes no cache
+    pad = round(3 * S)
+    for (x, y), variant in flow.game.specials.items():
+        color = SPECIAL_COLORS[variant]
+        glow = halo(color, alpha)
+        screen.blit(glow, glow.get_rect(center=((x + 0.5) * CELL, (y + 0.5) * CELL)))
+        pygame.draw.rect(screen, color, (x * CELL + pad, y * CELL + pad, CELL - 2 * pad, CELL - 2 * pad))
 
 
 @cache
@@ -79,10 +118,11 @@ def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
     layer = surface(screen.get_size(), True)
     layer.fill((0, 0, 0, 0))
     for burst in flow.bursts:
+        size = 9 * S if burst.life_ms > 600 else 4 * S  # detritos do carimbo são pedaços maiores
         for p in burst.particles:
-            radius = max(1, round(4 * S * p.life))
+            radius = max(1, round(size * p.life))
             center = ((p.x + 0.5) * CELL, (p.y + 0.5) * CELL)
-            pygame.draw.circle(layer, (*PARTICLE, round(255 * p.life)), center, radius)
+            pygame.draw.circle(layer, (*TINTS[burst.tint], round(255 * p.life)), center, radius)
     screen.blit(layer, (0, 0))
 
 
@@ -96,6 +136,8 @@ def score_y(flow: Flow) -> float:
 
 
 def draw_score(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    if flow.frenzy is not None:
+        return  # no Frenzy (inclusive na abertura) o placar some e o cronômetro ocupa o topo (004)
     pulse = flow.pulse
     flash_color = blend(FLASH_WHITE, FLASH_YELLOW, pulse.warmth)
     label = font.render(f"Pontos: {flow.game.score}", True, blend(TEXT, flash_color, pulse.flash))
@@ -106,6 +148,79 @@ def draw_score(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> No
     if pulse.scale > 1 and rect.top < 4 * S:
         rect.top = round(4 * S)  # o pico do pulso (1,8x) não pode sair pela borda de cima
     screen.blit(label, rect)
+
+
+def draw_timer(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    """Cronômetro grande no centro do topo e "N restantes" abaixo (FR-012/FR-019 da 004)."""
+    if not flow.timer_visible:
+        return
+    cx = screen.get_width() / 2
+    timer = flow.frenzy
+    warning = timer.warning or flow.phase is Phase.TIMEOUT
+    if flow.phase is not Phase.TIMEOUT or flow.timeout_blink:
+        label = font_of(round(72 * S)).render(str(timer.seconds_left), True, TIMER_WARNING if warning else TIMER_COLOR)
+        scale = flow.timer_pulse.scale if timer.warning else 1
+        if scale != 1:
+            w, h = label.get_size()
+            label = pygame.transform.smoothscale(label, (round(w * scale), round(h * scale)))
+        rect = label.get_rect(center=(cx, 34 * S))
+        rect.top = max(rect.top, round(4 * S))  # o pulso não pode cortar o número na borda de cima
+        screen.blit(label, rect)
+    remaining = len(flow.game.specials)
+    draw_text(screen, font, f"{remaining} restantes", TEXT, (cx, 72 * S))
+
+
+@cache
+def stamp_surface(word: str, color: tuple) -> pygame.Surface:
+    """Palavra do carimbo com contorno escuro, já girada na diagonal (renderizada uma vez)."""
+    return pygame.transform.rotozoom(stamp_label(word, color), STAMP_ANGLE_DEG, 1)
+
+
+@cache
+def stamp_label(word: str, color: tuple) -> pygame.Surface:
+    """Palavra grande com contorno escuro, para ler sobre o tabuleiro."""
+    font = font_of(round(84 * S))
+    outline = round(4 * S)
+    base = font.render(word, True, color)
+    dark = font.render(word, True, STAMP_OUTLINE)
+    w, h = base.get_size()
+    canvas = pygame.Surface((w + 2 * outline, h + 2 * outline), pygame.SRCALPHA)
+    for ox in (-outline, 0, outline):
+        for oy in (-outline, 0, outline):
+            canvas.blit(dark, (outline + ox, outline + oy))
+    canvas.blit(base, (outline, outline))
+    return canvas
+
+
+def draw_stamps(screen: pygame.Surface, flow: Flow) -> None:
+    """Abertura do Frenzy: "FEEDING" e "FRENZY" caindo de 4x até 1x (FR-013 da 004)."""
+    alpha = round(255 * flow.stamp_alpha)
+    dx, dy = flow.shake.offset
+    for (word, color), scale, (x, y) in zip(STAMP_WORDS, flow.stamp_scales, flow.stamp_origins):
+        if scale is None or alpha <= 0:
+            continue
+        label = stamp_surface(word, color)
+        if scale != 1:
+            w, h = label.get_size()
+            label = pygame.transform.scale(label, (round(w * scale), round(h * scale)))
+        else:
+            label = label.copy()
+        label.set_alpha(alpha)
+        screen.blit(label, label.get_rect(center=((x + dx) * CELL, (y + dy) * CELL)))
+
+
+def draw_survived(screen: pygame.Surface, flow: Flow) -> None:
+    """ "SURVIVED!" azul entrando suave: aparece, cresce de 0,85x a 1x e sobe um pouco (FR-017)."""
+    progress = flow.survived_progress
+    if progress <= 0:
+        return
+    label = stamp_label("SURVIVED!", SURVIVED_COLOR)
+    scale = 0.85 + 0.15 * progress
+    w, h = label.get_size()
+    label = pygame.transform.smoothscale(label, (round(w * scale), round(h * scale)))
+    label.set_alpha(round(255 * progress))
+    cx, cy = screen.get_rect().center
+    screen.blit(label, label.get_rect(center=(cx, cy + (1 - progress) * CELL / 2)))
 
 
 def draw_panel(screen: pygame.Surface, panel: pygame.Surface, progress: float) -> None:
@@ -210,6 +325,11 @@ def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font
     dx, dy = flow.shake.offset  # em casas
     screen.blit(world, (dx * CELL, dy * CELL))
     draw_score(screen, font, flow)
+    draw_timer(screen, font, flow)
+    if flow.phase is Phase.FRENZY_INTRO:
+        draw_stamps(screen, flow)
+    elif flow.phase is Phase.SURVIVED:
+        draw_survived(screen, flow)
     if flow.phase in TITLE_PHASES:
         draw_title(screen, big, font, flow)
     elif flow.phase is Phase.COUNTDOWN:

@@ -44,6 +44,8 @@ class Game:
         self.direction = Direction.RIGHT
         self._pending: Direction | None = None
         self.food: Cell | None = None
+        self.specials: dict[Cell, int] = {}  # Feeding Frenzy: casa -> variante (0 roxa, 1 dourada)
+        self._in_frenzy = False
         self.score = 0
         self.status = Status.RUNNING
         self.food = self._spawn_food()
@@ -52,16 +54,45 @@ class Game:
     def snake(self) -> tuple[Cell, ...]:
         return tuple(self._snake)
 
-    def _spawn_food(self) -> Cell | None:
-        """Sorteia uma casa livre; a lista ordenada torna o resultado reproduzível pela seed."""
-        occupied = set(self._snake)
-        free = [
+    @property
+    def in_frenzy(self) -> bool:
+        return self._in_frenzy
+
+    def _free_cells(self) -> list[Cell]:
+        """Casas livres em ordem fixa: o sorteio fica reproduzível pela seed."""
+        occupied = set(self._snake) | set(self.specials)
+        return [
             (x, y)
             for y in range(self.height)
             for x in range(self.width)
             if (x, y) not in occupied
         ]
+
+    def _spawn_food(self) -> Cell | None:
+        free = self._free_cells()
         return self._rng.choice(free) if free else None
+
+    def start_frenzy(self, count: int = 10) -> int:
+        """Troca a fruta normal por até `count` frutas especiais; devolve quantas surgiram."""
+        food, self.food = self.food, None
+        free = self._free_cells()
+        if not free:
+            self.food = food
+            return 0
+        cells = self._rng.sample(free, min(count, len(free)))
+        self.specials = {cell: i % 2 for i, cell in enumerate(cells)}
+        self._in_frenzy = True
+        return len(cells)
+
+    def end_frenzy(self) -> None:
+        """Fim do Frenzy: some com as especiais e volta uma fruta normal."""
+        self.specials = {}
+        self._in_frenzy = False
+        self.food = self._spawn_food()
+
+    def fail(self) -> None:
+        """Derrota sem colisão (tempo do Frenzy esgotado)."""
+        self.status = Status.GAME_OVER
 
     def turn(self, direction: Direction) -> None:
         """Registra a direção do próximo passo (no máximo um comando válido por passo)."""
@@ -95,6 +126,7 @@ class Game:
         self._snake.insert(0, head)
         if not eating:
             self._snake.pop()
+            self.specials.pop(head, None)  # especial: some sem crescer nem pontuar
             return
 
         self.score += 1

@@ -15,12 +15,19 @@ PULSE_PEAK_MS, PULSE_PEAK = 60, 1.8
 PULSE_DIP_MS, PULSE_DIP = 180, 0.9
 COLLISION_SHAKE = (1 / 3, 400)  # (amplitude em casas, duração em ms)
 EAT_SHAKE = (1 / 9, 150)  # um terço da colisão (FR-015)
+STAMP_SHAKE = (1 / 2, 300)  # 004: impacto de cada palavra da abertura do Frenzy
 
 
 def ease_out(p: float) -> float:
     """Ease-out cúbico: rápido no começo, suave no fim; p limitado a [0, 1]."""
     p = min(max(p, 0.0), 1.0)
     return 1 - (1 - p) ** 3
+
+
+def ease_in(p: float) -> float:
+    """Ease-in quadrático: começa devagar e chega no máximo no fim (carimbo); p em [0, 1]."""
+    p = min(max(p, 0.0), 1.0)
+    return p * p
 
 
 def ease_in_out(p: float) -> float:
@@ -40,21 +47,34 @@ class Particle:
     vx: float
     vy: float
     age_ms: float = 0.0
+    life_ms: float = PARTICLE_LIFE_MS
 
     @property
     def life(self) -> float:
-        return max(0.0, 1 - self.age_ms / PARTICLE_LIFE_MS)
+        return max(0.0, 1 - self.age_ms / self.life_ms)
 
 
 class ParticleBurst:
-    def __init__(self, origin: tuple[float, float], rng: random.Random) -> None:
+    """Explosão de partículas; `tint` é só um rótulo de cor lido pelo desenho ("fruit", ...)."""
+
+    def __init__(
+        self,
+        origin: tuple[float, float],
+        rng: random.Random,
+        count: int = PARTICLES_PER_BURST,
+        speed: tuple[float, float] = PARTICLE_SPEED,
+        life_ms: float = PARTICLE_LIFE_MS,
+        tint: str = "fruit",
+    ) -> None:
         self.origin = origin
+        self.tint = tint
+        self.life_ms = life_ms
         self.particles: list[Particle] = []
-        for _ in range(PARTICLES_PER_BURST):
+        for _ in range(count):
             angle = rng.uniform(0, 2 * math.pi)
-            speed = rng.uniform(*PARTICLE_SPEED)
+            v = rng.uniform(*speed)
             self.particles.append(
-                Particle(origin[0], origin[1], math.cos(angle) * speed, math.sin(angle) * speed)
+                Particle(origin[0], origin[1], math.cos(angle) * v, math.sin(angle) * v, life_ms=life_ms)
             )
 
     def update(self, dt_ms: float) -> None:
@@ -63,7 +83,7 @@ class ParticleBurst:
             p.x += p.vx * seconds
             p.y += p.vy * seconds
             p.age_ms += dt_ms
-        self.particles = [p for p in self.particles if p.age_ms < PARTICLE_LIFE_MS]
+        self.particles = [p for p in self.particles if p.age_ms < self.life_ms]
 
     @property
     def done(self) -> bool:
