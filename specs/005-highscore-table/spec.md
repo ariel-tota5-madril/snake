@@ -38,6 +38,11 @@
   posições (vazias como "---"). O nome do jogador começa fora das posições numeradas, abaixo da
   10ª, e só se encaixa no número da sua posição ao fim da animação, depois de passar por todas as
   linhas do caminho.
+- Q: Com o placar cheio, quando o antigo 10º explode? → A: Quando o foguete passa por ele, na
+  subida (é o primeiro impacto); os pedaços caem para fora pela base. Além disso, todo nome
+  atingido pelo foguete muda de cor para vermelho (animado) e fica vermelho até sair do placar,
+  destacando quantos foram ultrapassados; numa próxima visita ao placar, todos voltam ao branco.
+  A tela inicial ganha a opção de ver o ranking.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -99,6 +104,8 @@ jogo, e ver as duas no placar na ordem certa.
    a tela inicial.
 7. **Given** o jogo foi fechado e aberto, **When** o placar aparece, **Then** os resultados
    anteriores continuam lá.
+8. **Given** a tela inicial, **When** o jogador escolhe "Ranking", **Then** o placar abre do 1º
+   lugar, sem animação, pode ser rolado, e Enter ou Esc voltam à tela inicial.
 
 ---
 
@@ -130,8 +137,9 @@ e observar o tremor, a decolagem, as explosões e o pouso; repetir batendo o 1º
    para de descer e o nome volta a subir na tela, com a mesma velocidade máxima, até a sua
    posição.
 4. **Given** o nome subindo, **When** ele alcança um nome que está acima, **Then** esse nome
-   explode (letras e pontos se espalham), toca um som de impacto e o nome se remonta na posição
-   logo abaixo.
+   explode (letras e pontos se espalham), toca um som de impacto, muda para vermelho e se remonta
+   na posição logo abaixo, onde continua vermelho até o placar fechar; se era o antigo 10º de um
+   placar cheio, os pedaços caem para fora pela base.
 5. **Given** o nome chega na sua nova posição, **When** pousa, **Then** as partículas param, toca
    um som de pouso e só então o nome se encaixa no número da posição, destacado.
 6. **Given** a nova posição é a primeira, **When** o nome pousa, **Then** aparece "1ST PLACE!" em
@@ -213,8 +221,11 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
   com uma indicação de que há mais conteúdo acima/abaixo.
 - **FR-010**: Depois da animação, DEVEM aparecer as opções "Jogar de novo" e "Tela inicial",
   escolhidas com ←/→ ou A/D e confirmadas com Enter.
-- **FR-010a**: A tela inicial DEVE ter as opções "Jogar", "Opções" e "Sair"; "Sair" fecha o jogo
-  (com o som de confirmação, como o antigo "Quit").
+- **FR-010a**: A tela inicial DEVE ter as opções "Jogar", "Ranking", "Opções" e "Sair"; "Sair"
+  fecha o jogo (com o som de confirmação, como o antigo "Quit").
+- **FR-010b**: "Ranking" na tela inicial DEVE abrir o placar só para consulta: sem animação, sem
+  destaque, começando do 1º lugar, com rolagem por ↑/↓ e W/S; Enter ou Esc voltam à tela
+  inicial.
 - **FR-011**: O jogo DEVE aceitar W/A/S/D como alternativa a ↑/←/↓/→ em todas as telas
   (partida, tela inicial, pausa, Opções e placar), exceto na entrada de nome, onde as letras são
   digitadas.
@@ -227,8 +238,12 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
   se encaixa no número da posição ao pousar.
 - **FR-013**: Cada nome ultrapassado DEVE explodir (letras e pontos espalhando) e se remontar uma
   posição abaixo.
-- **FR-013a**: Se o placar estava cheio, o 10º colocado anterior DEVE explodir durante a ignição,
-  com os pedaços caindo para fora pela base do placar e som de impacto, antes da decolagem.
+- **FR-013a**: Se o placar estava cheio, o 10º colocado anterior DEVE explodir quando o foguete
+  passa por ele (o primeiro impacto da subida), com os pedaços caindo para fora pela base do
+  placar e som de impacto, em vez de se remontar.
+- **FR-013b**: Todo nome atingido pelo foguete (inclusive o expulso) DEVE mudar de cor para
+  vermelho com uma transição animada e continuar vermelho enquanto o placar estiver aberto; ao
+  abrir o placar de novo, todos os nomes aparecem na cor normal.
 - **FR-014**: Ao pousar na 1ª posição, DEVE aparecer "1ST PLACE!"; em outra posição, a animação
   termina no pouso.
 - **FR-015**: Enter durante a animação DEVE pular para o estado final.
@@ -271,6 +286,8 @@ ultrapassado, pouso, fanfarra do 1º lugar e rolagem.
   padrão dos menus atuais; "1ST PLACE!" fica em inglês, como pedido.
 - O placar substitui o menu de fim de partida (Restart/Opções/Quit); Opções continua acessível
   pela tela inicial e pela pausa, e "Sair" passa para a tela inicial (FR-010a).
+- A consulta do ranking pela tela inicial mostra apenas a opção "Voltar" e não toca os sons da
+  animação; a rolagem usa o som de navegação.
 - O jingle de derrota/vitória e o tremor de colisão continuam acontecendo antes do placar.
 - O placar fica salvo junto com as configurações (pasta de configuração do usuário).
 - A velocidade máxima do foguete é escolhida para que a subida mais longa possível (da 10ª à 1ª
