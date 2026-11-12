@@ -191,3 +191,114 @@ def test_win_goes_to_menu_without_shaking():
     assert flow.game.status is Status.WON
     assert flow.phase is not Phase.SHAKING
     assert flow.menu is not None
+
+
+# --- US3: entrada e saída da interface ---------------------------------------------------
+
+from snake.flow import COUNTDOWN_MS, UI_ANIM_MS  # noqa: E402
+
+
+def to_title(flow: Flow) -> Flow:
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.TITLE
+    return flow
+
+
+# T020
+def test_new_flow_starts_with_title_entering_then_title():
+    flow = Flow(seed=1)
+    assert flow.phase is Phase.TITLE_IN
+    flow.direction(Direction.UP)
+    flow.confirm()  # ignorados durante a entrada
+    flow.update(UI_ANIM_MS - 1)
+    assert flow.phase is Phase.TITLE_IN
+    flow.update(1)
+    assert flow.phase is Phase.TITLE
+
+
+def test_confirm_on_title_leaves_and_starts_countdown():
+    flow = to_title(Flow(seed=1))
+    flow.direction(Direction.UP)  # setas ignoradas na tela inicial
+    assert flow.phase is Phase.TITLE
+    flow.confirm()
+    assert flow.phase is Phase.TITLE_OUT
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+
+
+# T021
+def test_countdown_shows_3_2_1_and_snake_waits():
+    flow = to_title(Flow(seed=1))
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    start = flow.game.snake
+    numbers = []
+    for _ in range(int(COUNTDOWN_MS / 100) - 1):
+        numbers.append(flow.countdown_number)
+        flow.direction(Direction.UP)  # ignorado
+        flow.confirm()  # ignorado
+        flow.update(100)
+    assert flow.phase is Phase.COUNTDOWN
+    assert flow.game.snake == start
+    assert flow.game.direction is Direction.RIGHT
+    assert [n for i, n in enumerate(numbers) if i == 0 or numbers[i - 1] != n] == [3, 2, 1]
+    flow.update(100)
+    assert flow.phase is Phase.PLAYING
+    assert flow.countdown_number is None
+
+
+# T022
+def test_end_menu_enters_then_accepts_input():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    while flow.phase in (Phase.PLAYING, Phase.SHAKING):
+        flow.update(50)
+    assert flow.phase is Phase.MENU_IN
+    assert flow.menu is not None
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.MENU
+
+
+def test_menu_key_during_entrance_completes_it_and_is_applied():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    while flow.phase in (Phase.PLAYING, Phase.SHAKING):
+        flow.update(50)
+    assert flow.phase is Phase.MENU_IN
+    flow.direction(Direction.DOWN)
+    assert flow.phase is Phase.MENU
+    assert flow.menu.selected is MenuOption.QUIT
+
+
+def test_restart_leaves_menu_then_goes_to_countdown_not_title():
+    flow = to_menu(to_playing(Flow(seed=1)))
+    flow.confirm()
+    assert flow.phase is Phase.MENU_OUT
+    assert flow.game.status is Status.GAME_OVER  # ainda não reiniciou
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+    assert flow.game.status is Status.RUNNING
+    assert flow.menu is None
+
+
+def test_quit_from_menu_is_immediate():
+    flow = to_menu(to_playing(Flow(seed=1)))
+    flow.direction(Direction.DOWN)
+    flow.confirm()
+    assert flow.quit_requested
+    assert flow.phase is Phase.MENU
+
+
+# T023
+def test_ui_progress_by_phase():
+    flow = Flow(seed=1)
+    assert flow.ui_progress == 0  # TITLE_IN no início
+    flow.update(UI_ANIM_MS / 2)
+    mid_in = flow.ui_progress
+    assert 0.5 < mid_in < 1  # ease-out: passa da metade na metade do tempo
+    flow.update(UI_ANIM_MS / 2)
+    assert flow.phase is Phase.TITLE and flow.ui_progress == 1
+    flow.confirm()
+    assert flow.ui_progress == 1  # TITLE_OUT começa cheio
+    flow.update(UI_ANIM_MS / 2)
+    assert 0 < flow.ui_progress < 1

@@ -105,15 +105,15 @@ animadas (FR-007, FR-008, FR-009, FR-012, FR-013).
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T020 [P] [US3] Test in `tests/test_flow.py`: a new flow starts in `TITLE_IN`, reaches `TITLE` after 300 ms ("UI_ANIM_MS = 300"); arrows and confirm are ignored in `TITLE_IN`; confirm in `TITLE` goes to `TITLE_OUT` and, 300 ms later, to `COUNTDOWN`; arrows in `TITLE` are ignored
-- [ ] T021 [P] [US3] Test in `tests/test_flow.py`: in `COUNTDOWN`, `countdown_number` is 3, 2, 1 for each second of "COUNTDOWN_MS = 3000"; the snake does not move and inputs are ignored; after 3000 ms the phase is `PLAYING`
-- [ ] T022 [P] [US3] Test in `tests/test_flow.py`: end of game → `MENU_IN` → `MENU` after 300 ms; a menu key during `MENU_IN` completes the entrance and is applied; confirm `RESTART` → `MENU_OUT` → after 300 ms the game is restarted and the phase is `COUNTDOWN` (not `TITLE`); confirm `QUIT` sets `quit_requested` immediately
-- [ ] T023 [P] [US3] Test in `tests/test_flow.py`: `ui_progress` goes 0→1 with easing in `_IN` phases, 1→0 in `_OUT` phases, and is 1 in `TITLE` and `MENU`
+- [X] T020 [P] [US3] Test in `tests/test_flow.py`: a new flow starts in `TITLE_IN`, reaches `TITLE` after 300 ms ("UI_ANIM_MS = 300"); arrows and confirm are ignored in `TITLE_IN`; confirm in `TITLE` goes to `TITLE_OUT` and, 300 ms later, to `COUNTDOWN`; arrows in `TITLE` are ignored
+- [X] T021 [P] [US3] Test in `tests/test_flow.py`: in `COUNTDOWN`, `countdown_number` is 3, 2, 1 for each second of "COUNTDOWN_MS = 3000"; the snake does not move and inputs are ignored; after 3000 ms the phase is `PLAYING`
+- [X] T022 [P] [US3] Test in `tests/test_flow.py`: end of game → `MENU_IN` → `MENU` after 300 ms; a menu key during `MENU_IN` completes the entrance and is applied; confirm `RESTART` → `MENU_OUT` → after 300 ms the game is restarted and the phase is `COUNTDOWN` (not `TITLE`); confirm `QUIT` sets `quit_requested` immediately
+- [X] T023 [P] [US3] Test in `tests/test_flow.py`: `ui_progress` goes 0→1 with easing in `_IN` phases, 1→0 in `_OUT` phases, and is 1 in `TITLE` and `MENU`
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] In `src/snake/flow.py`: start in `TITLE_IN`; add `TITLE`, `TITLE_OUT`, `COUNTDOWN`, `MENU_IN`, `MENU_OUT` with the transitions and ignored inputs of data-model.md; expose `countdown_number` and `ui_progress`
-- [ ] T025 [US3] In `src/snake/app.py`: draw the title screen over the dimmed board, the countdown numbers, the score sliding in during the countdown, and scale/alpha of title and end menu by `ui_progress`
+- [X] T024 [US3] In `src/snake/flow.py`: start in `TITLE_IN`; add `TITLE`, `TITLE_OUT`, `COUNTDOWN`, `MENU_IN`, `MENU_OUT` with the transitions and ignored inputs of data-model.md; expose `countdown_number` and `ui_progress`
+- [X] T025 [US3] In `src/snake/app.py`: draw the title screen over the dimmed board, the countdown numbers, the score sliding in during the countdown, and scale/alpha of title and end menu by `ui_progress`
 
 **Checkpoint**: todas as histórias funcionando; `pytest` verde.
 
