@@ -135,16 +135,16 @@ escolher "Quit" (quickstart.md itens 7 a 10).
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T030 [P] [US1] Test in `tests/test_restart.py`: after `GAME_OVER`, `restart()` returns to the initial state (`snake == ((10,10), (9,10), (8,10))`, `direction == RIGHT`, `score == 0`, `status == RUNNING`) with one food on a free cell
-- [ ] T031 [P] [US1] Test in `tests/test_restart.py`: `restart()` also works after `WON`, and two sessions with the same seed and the same commands (including a restart) produce the same food sequence (mesmo RNG)
-- [ ] T032 [P] [US1] Test in `tests/test_menu.py`: `EndMenu` starts with `selected == RESTART`; `move_down()` selects `QUIT`; `move_down()` at `QUIT` and `move_up()` at `RESTART` change nothing ("sem volta circular"); `confirm()` returns the selected option
-- [ ] T033 [P] Extend `tests/test_core_purity.py` to also check that `snake.menu` imports no `pygame`, `time` or `datetime`
+- [X] T030 [P] [US1] Test in `tests/test_restart.py`: after `GAME_OVER`, `restart()` returns to the initial state (`snake == ((10,10), (9,10), (8,10))`, `direction == RIGHT`, `score == 0`, `status == RUNNING`) with one food on a free cell
+- [X] T031 [P] [US1] Test in `tests/test_restart.py`: `restart()` also works after `WON`, and two sessions with the same seed and the same commands (including a restart) produce the same food sequence (mesmo RNG)
+- [X] T032 [P] [US1] Test in `tests/test_menu.py`: `EndMenu` starts with `selected == RESTART`; `move_down()` selects `QUIT`; `move_down()` at `QUIT` and `move_up()` at `RESTART` change nothing ("sem volta circular"); `confirm()` returns the selected option
+- [X] T033 [P] Extend `tests/test_core_purity.py` to also check that `snake.menu` imports no `pygame`, `time` or `datetime`
 
 ### Implementation for User Story 1 (incremento)
 
-- [ ] T034 [US1] Implement `Game.restart()` in `src/snake/core.py`: reset snake, direction, pending, score and status as in `__init__`, then spawn food with the same `rng`
-- [ ] T035 [P] [US1] Implement `MenuOption` (`RESTART`, `QUIT`) and `EndMenu` (`options`, `selected`, `move_up()`, `move_down()`, `confirm()`) in `src/snake/menu.py`
-- [ ] T036 [US1] In `src/snake/app.py`: when `status` is not `RUNNING`, show final score and the menu with the selected option highlighted; route ↑/↓ to the menu and Espaço/Enter to `confirm()` (`RESTART` → `game.restart()`, `QUIT` → close); ignore Espaço/Enter while `RUNNING`
+- [X] T034 [US1] Implement `Game.restart()` in `src/snake/core.py`: reset snake, direction, pending, score and status as in `__init__`, then spawn food with the same `rng`
+- [X] T035 [P] [US1] Implement `MenuOption` (`RESTART`, `QUIT`) and `EndMenu` (`options`, `selected`, `move_up()`, `move_down()`, `confirm()`) in `src/snake/menu.py`
+- [X] T036 [US1] In `src/snake/app.py`: when `status` is not `RUNNING`, show final score and the menu with the selected option highlighted; route ↑/↓ to the menu and Espaço/Enter to `confirm()` (`RESTART` → `game.restart()`, `QUIT` → close); ignore Espaço/Enter while `RUNNING`
 
 **Checkpoint**: `pytest` verde; perder → "Restart" inicia nova partida; "Quit" fecha o jogo.
 

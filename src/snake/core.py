@@ -35,7 +35,11 @@ class Game:
         self.width = width
         self.height = height
         self._rng = rng if rng is not None else random.Random(seed)
-        cx, cy = width // 2, height // 2
+        self.restart()
+
+    def restart(self) -> None:
+        """Volta ao estado inicial (FR-002) mantendo o mesmo RNG, para a sessão ser reproduzível."""
+        cx, cy = self.width // 2, self.height // 2
         self._snake: list[Cell] = [(cx, cy), (cx - 1, cy), (cx - 2, cy)]
         self.direction = Direction.RIGHT
         self._pending: Direction | None = None
