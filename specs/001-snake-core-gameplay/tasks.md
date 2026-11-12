@@ -26,9 +26,9 @@ DEVE ser escrito e falhar antes da implementação correspondente.
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create package skeleton `src/snake/__init__.py`, empty `src/snake/core.py` and `tests/` per plan.md
-- [ ] T002 Create `requirements.txt` with `pygame>=2.6` and `pytest>=8`, then install into `.venv`
-- [ ] T003 [P] Create `pyproject.toml` with pytest config (`pythonpath = ["src"]`, `testpaths = ["tests"]`)
+- [X] T001 Create package skeleton `src/snake/__init__.py`, empty `src/snake/core.py` and `tests/` per plan.md
+- [X] T002 Create `requirements.txt` with `pygame>=2.6` and `pytest>=8`, then install into `.venv`
+- [X] T003 [P] Create `pyproject.toml` with pytest config (`pythonpath = ["src"]`, `testpaths = ["tests"]`)
 
 **Checkpoint**: `pytest` runs (0 tests) without errors.
 
@@ -40,10 +40,10 @@ DEVE ser escrito e falhar antes da implementação correspondente.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Write failing test for the initial state in `tests/test_movement.py`: grade 20 × 20, `snake == ((10,10), (9,10), (8,10))`, `direction == RIGHT`, `score == 0`, `status == RUNNING`
-- [ ] T005 Implement `Direction` (`UP (0,-1)`, `DOWN (0,1)`, `LEFT (-1,0)`, `RIGHT (1,0)`) and `Status` (`RUNNING`, `GAME_OVER`, `WON`) enums in `src/snake/core.py`
-- [ ] T006 Implement `Game.__init__(width=20, height=20, rng=None, seed=None)` in `src/snake/core.py` creating the initial state (rng = given `random.Random` or `random.Random(seed)`; `food` temporarily `None`) until T004 passes
-- [ ] T007 Create minimal Pygame adapter `src/snake/app.py` (opens a 20 × 20 grid window, draws the snake from `Game`, closes on window exit) and entry point `src/snake/__main__.py`
+- [X] T004 Write failing test for the initial state in `tests/test_movement.py`: grade 20 × 20, `snake == ((10,10), (9,10), (8,10))`, `direction == RIGHT`, `score == 0`, `status == RUNNING`
+- [X] T005 Implement `Direction` (`UP (0,-1)`, `DOWN (0,1)`, `LEFT (-1,0)`, `RIGHT (1,0)`) and `Status` (`RUNNING`, `GAME_OVER`, `WON`) enums in `src/snake/core.py`
+- [X] T006 Implement `Game.__init__(width=20, height=20, rng=None, seed=None)` in `src/snake/core.py` creating the initial state (rng = given `random.Random` or `random.Random(seed)`; `food` temporarily `None`) until T004 passes
+- [X] T007 Create minimal Pygame adapter `src/snake/app.py` (opens a 20 × 20 grid window, draws the snake from `Game`, closes on window exit) and entry point `src/snake/__main__.py`
 
 **Checkpoint**: `pytest` verde e `python -m snake` abre a janela com a cobra parada (Princípio V).
 
@@ -61,18 +61,18 @@ bater na parede ou no próprio corpo.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Test in `tests/test_movement.py`: `step()` without input moves the head one cell right and keeps length 3
-- [ ] T009 [P] [US1] Test in `tests/test_movement.py`: `turn(UP)` then `step()` moves up; `turn(LEFT)` while going right is ignored
-- [ ] T010 [P] [US1] Test in `tests/test_movement.py`: two `turn()` calls in the same step apply only the first valid one ("no máximo um comando por passo (FR-005)") and the snake never reverses onto itself
-- [ ] T011 [P] [US1] Test in `tests/test_collision.py`: head leaving the grid sets `status == GAME_OVER` and the snake does not move out of the grid
-- [ ] T012 [P] [US1] Test in `tests/test_collision.py`: head entering its own body sets `GAME_OVER`; moving into the cell the tail just left is allowed
-- [ ] T013 [P] [US1] Test in `tests/test_collision.py`: after `GAME_OVER`, `step()` and `turn()` change nothing (FR-013)
+- [X] T008 [P] [US1] Test in `tests/test_movement.py`: `step()` without input moves the head one cell right and keeps length 3
+- [X] T009 [P] [US1] Test in `tests/test_movement.py`: `turn(UP)` then `step()` moves up; `turn(LEFT)` while going right is ignored
+- [X] T010 [P] [US1] Test in `tests/test_movement.py`: two `turn()` calls in the same step apply only the first valid one ("no máximo um comando por passo (FR-005)") and the snake never reverses onto itself
+- [X] T011 [P] [US1] Test in `tests/test_collision.py`: head leaving the grid sets `status == GAME_OVER` and the snake does not move out of the grid
+- [X] T012 [P] [US1] Test in `tests/test_collision.py`: head entering its own body sets `GAME_OVER`; moving into the cell the tail just left is allowed
+- [X] T013 [P] [US1] Test in `tests/test_collision.py`: after `GAME_OVER`, `step()` and `turn()` change nothing (FR-013)
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement `Game.turn(direction)` in `src/snake/core.py`: ignore opposite of current direction, keep only the first valid command per step, no effect outside `RUNNING`
-- [ ] T015 [US1] Implement `Game.step()` in `src/snake/core.py` following data-model.md steps 1–4, 6 and 7 (apply pending, move, wall and body collision with tail freed, freeze when not `RUNNING`)
-- [ ] T016 [US1] Wire arrow keys to `turn()` and a fixed 8 steps/s clock to `step()` in `src/snake/app.py`; show a "Game Over" message when `status == GAME_OVER`
+- [X] T014 [US1] Implement `Game.turn(direction)` in `src/snake/core.py`: ignore opposite of current direction, keep only the first valid command per step, no effect outside `RUNNING`
+- [X] T015 [US1] Implement `Game.step()` in `src/snake/core.py` following data-model.md steps 1–4, 6 and 7 (apply pending, move, wall and body collision with tail freed, freeze when not `RUNNING`)
+- [X] T016 [US1] Wire arrow keys to `turn()` and a fixed 8 steps/s clock to `step()` in `src/snake/app.py`; show a "Game Over" message when `status == GAME_OVER`
 
 **Checkpoint**: `pytest` verde; a cobra anda, vira e a partida termina na parede e no corpo.
 
