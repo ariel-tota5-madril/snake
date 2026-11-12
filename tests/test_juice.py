@@ -178,3 +178,16 @@ def test_particle_burst_defaults_are_unchanged():
     assert not burst.done
     burst.update(1)
     assert burst.done
+
+
+# 005 / T003 — faixa de ângulos (chama do foguete aponta para baixo)
+def test_particle_burst_angle_range():
+    import math
+
+    lo, hi = math.pi / 2 - 0.5, math.pi / 2 + 0.5
+    burst = ParticleBurst((0.0, 0.0), random.Random(5), count=40, angle=(lo, hi))
+    for p in burst.particles:
+        a = math.atan2(p.vy, p.vx)
+        assert lo - 1e-9 <= a <= hi + 1e-9
+    spread = ParticleBurst((0.0, 0.0), random.Random(5), count=200)
+    assert any(p.vy < 0 for p in spread.particles) and any(p.vy > 0 for p in spread.particles)

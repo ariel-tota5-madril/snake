@@ -135,6 +135,7 @@ def _ui_sfx() -> None:
     SFX[SoundEvent.NAV] = (render([Note("square25", 1200, 30, decay=1)]), 0.4)
     SFX[SoundEvent.CONFIRM] = (render([Note("square25", 880, 60), Note("square25", 1319, 60, decay=1)]), 0.6)
     SFX[SoundEvent.VOLUME_PREVIEW] = (SFX[SoundEvent.EAT][0], 0.7)  # amostra = som de coleta
+    SFX[SoundEvent.NAME_TYPE] = (render([Note("square25", 1500, 25, decay=1)]), 0.35)  # 005
 
 
 def _frenzy_sfx() -> None:

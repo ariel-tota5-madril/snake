@@ -14,6 +14,7 @@ from snake.core import Direction, Status
 from snake.flow import RESUME_STEP_MS, STAMP_ANGLE_DEG, UI_ANIM_MS, Flow, Phase, SoundEvent
 from snake.juice import ease_out
 from snake.menu import Menu, MenuOption
+from snake.scoreboard import VISIBLE_ROWS
 
 CELL = 48  # grade 30x30 -> janela 1440x1440 (FR-014)
 S = CELL / 24  # escala da interface em relação ao tamanho original (24 px por casa)
@@ -34,6 +35,10 @@ MENU_PHASES = {Phase.MENU_IN, Phase.MENU, Phase.MENU_OUT}
 PAUSE_UI = {Phase.PAUSE_IN, Phase.PAUSE, Phase.PAUSE_OUT}
 OPTIONS_UI = {Phase.OPTIONS_IN, Phase.OPTIONS, Phase.OPTIONS_OUT}
 SETTINGS_PATH = Path.home() / ".config" / "snake" / "settings.json"
+HIGHSCORES_PATH = Path.home() / ".config" / "snake" / "highscores.json"
+BOARD_W, BOARD_H = 300, 640  # painel vertical do placar (x S)
+BOARD_TOP, ROW_H = 100, 64  # início da área das linhas e altura de cada linha (x S)
+BOARD_BG = (28, 32, 44, 235)
 SLIDER_BG = (60, 64, 76)
 SPECIAL_COLORS = ((190, 90, 255), (255, 200, 40))  # 004: roxa ("FEEDING") e dourada ("FRENZY")
 TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1]}
@@ -51,6 +56,14 @@ KEYS = {
     pygame.K_LEFT: Direction.LEFT,
     pygame.K_RIGHT: Direction.RIGHT,
 }
+WASD = {  # 005/FR-011: WASD vale como setas fora da entrada de nome
+    pygame.K_w: Direction.UP,
+    pygame.K_s: Direction.DOWN,
+    pygame.K_a: Direction.LEFT,
+    pygame.K_d: Direction.RIGHT,
+}
+NAME_UI = {Phase.NAME_IN, Phase.NAME, Phase.NAME_OUT}
+CURSOR_BLINK_MS = 500
 CONFIRM_KEYS = {pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER}
 
 
@@ -128,7 +141,7 @@ def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
 
 def score_y(flow: Flow) -> float:
     """O placar fica escondido na tela inicial e entra deslizando de cima no começo da contagem."""
-    if flow.phase in TITLE_PHASES or (flow.phase in OPTIONS_UI and flow.options_origin is Phase.TITLE):
+    if flow.phase in TITLE_PHASES or flow.phase in NAME_UI or (flow.phase in OPTIONS_UI and flow.options_origin is Phase.TITLE):
         return -30 * S
     if flow.phase is Phase.COUNTDOWN:
         return (-30 + 48 * ease_out(flow.phase_ms / UI_ANIM_MS)) * S
@@ -230,6 +243,9 @@ def draw_panel(screen: pygame.Surface, panel: pygame.Surface, progress: float) -
     screen.blit(shade, (0, 0))
     if progress <= 0:
         return
+    if progress >= 1:
+        screen.blit(panel, panel.get_rect(center=screen.get_rect().center))
+        return
     scale = 0.8 + 0.2 * progress
     w, h = panel.get_size()
     scaled = pygame.transform.smoothscale(panel, (max(1, round(w * scale)), max(1, round(h * scale))))
@@ -254,7 +270,7 @@ def menu_lines(menu: Menu) -> list[tuple[str, tuple]]:
 
 
 def draw_title(screen: pygame.Surface, big: pygame.font.Font, font: pygame.font.Font, flow: Flow) -> None:
-    panel = pygame.Surface((round(420 * S), round(200 * S)), pygame.SRCALPHA)
+    panel = pygame.Surface((round(420 * S), round(240 * S)), pygame.SRCALPHA)  # 3 opções (005)
     draw_text(panel, big, "Snake", SNAKE_HEAD, (210 * S, 45 * S))
     for i, (text, color) in enumerate(menu_lines(flow.title_menu)):
         draw_text(panel, font, text, color, (210 * S, (120 + i * 36) * S))
@@ -309,11 +325,90 @@ def draw_resume(screen: pygame.Surface, big: pygame.font.Font, flow: Flow) -> No
     draw_big_number(screen, big, flow.resume_number, within)
 
 
-def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+def draw_name_entry(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    """Painel do nome do jogador (005/US1) com cursor piscando."""
+    width, height = round(420 * S), round(180 * S)
+    panel = pygame.Surface((width, height), pygame.SRCALPHA)
+    draw_text(panel, font, "Seu nome", TEXT, (width / 2, 24 * S))
+    field = pygame.Rect(round(40 * S), round(56 * S), width - round(80 * S), round(48 * S))
+    pygame.draw.rect(panel, SLIDER_BG, field, border_radius=round(6 * S))
+    text = flow.name_entry.text if flow.name_entry else ""
+    cursor = "_" if (pygame.time.get_ticks() // CURSOR_BLINK_MS) % 2 == 0 else " "
+    draw_text(panel, font, text + cursor, HIGHLIGHT, field.center)
+    draw_text(panel, font, "Enter para jogar  ·  Esc volta", DIM, (width / 2, 140 * S))
+    draw_panel(screen, panel, flow.ui_progress)
+
+
+@cache
+def glyph(ch: str, color: tuple) -> pygame.Surface:
+    return font_of(round(36 * S)).render(ch, True, color)
+
+
+def draw_chars(panel, text: str, color, x: float, y: float, offsets=None, align_right=False) -> None:
+    """Texto desenhado letra a letra (com o espaçamento normal da fonte): cada letra pode voar."""
+    glyphs = [glyph(ch, color) for ch in text]
+    start = x - sum(g.get_width() for g in glyphs) if align_right else x
+    for i, g in enumerate(glyphs):
+        dx, dy = offsets[i] if offsets else (0, 0)
+        panel.blit(g, g.get_rect(midleft=(start + dx * ROW_H * S, y + dy * ROW_H * S)))
+        start += g.get_width()
+
+
+def draw_arrow(panel, center, up: bool) -> None:
+    x, y = center
+    h = 8 * S
+    tip, base = (y - h, y + h) if up else (y + h, y - h)
+    pygame.draw.polygon(panel, DIM, [(x, tip), (x - 12 * S, base), (x + 12 * S, base)])
+
+
+def draw_entry(panel, entry, color, y: float, offsets=None) -> None:
+    name_offsets = offsets[: len(entry.name)] if offsets else None
+    score_offsets = offsets[len(entry.name) :] if offsets else None
+    draw_chars(panel, entry.name, color, 64 * S, y, name_offsets)
+    draw_chars(panel, str(entry.score), color, (BOARD_W - 18) * S, y, score_offsets, align_right=True)
+
+
+def draw_scoreboard(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    """Placar vertical (005): 5 linhas visíveis com rolagem, resultado de fora e opções."""
+    board = flow.scoreboard
+    width, height = round(BOARD_W * S), round(BOARD_H * S)
+    panel = pygame.Surface((width, height), pygame.SRCALPHA)
+    pygame.draw.rect(panel, BOARD_BG, panel.get_rect(), border_radius=round(10 * S))
     title = "Game Over" if flow.game.status is Status.GAME_OVER else "Você venceu!"
-    lines = [(title, TEXT), (f"Pontuação final: {flow.game.score}", TEXT), ("", TEXT)]
-    lines += menu_lines(flow.menu)
-    draw_panel(screen, lines_panel(font, lines, (round(360 * S), round(216 * S))), flow.ui_progress)
+    draw_text(panel, font, title, DIM, (width / 2, 24 * S))
+    draw_text(panel, font_of(round(52 * S)), "HIGHSCORES", HIGHLIGHT, (width / 2, 62 * S))
+    top, row_h = BOARD_TOP * S, ROW_H * S
+    area = pygame.Rect(0, round(top), width, round(VISIBLE_ROWS * row_h))
+    panel.set_clip(area)
+    view = board.view_top
+    for i in range(len(board.after)):  # números das posições acompanham as linhas
+        draw_text(panel, font, f"{i + 1}.", DIM, (34 * S, top + (i - view + 0.5) * row_h))
+    for row in board.rows():
+        color = HIGHLIGHT if row.is_player else TEXT
+        draw_entry(panel, row.entry, color, top + (row.y - view + 0.5) * row_h)
+    panel.set_clip(None)
+    if view > 0.01:
+        draw_arrow(panel, (width / 2, top - 10 * S), up=True)
+    if view < max(0, len(board.after) - VISIBLE_ROWS) - 0.01:
+        draw_arrow(panel, (width / 2, area.bottom + 12 * S), up=False)
+    if board.outside is not None:
+        draw_text(panel, font, "Seu resultado", DIM, (width / 2, area.bottom + 40 * S))
+        draw_entry(panel, board.outside, HIGHLIGHT, area.bottom + 74 * S)
+    if board.done:
+        small = font_of(round(28 * S))
+        for i, option in enumerate(flow.menu.options):  # lado a lado, escolhidas com ←/→
+            selected = option is flow.menu.selected
+            center = (width * (0.27 + 0.46 * i), height - 44 * S)
+            draw_text(panel, small, option.value, HIGHLIGHT if selected else DIM, center)
+            if selected:
+                bar = pygame.Rect(0, 0, round(120 * S), round(3 * S))
+                bar.center = (center[0], center[1] + 18 * S)
+                pygame.draw.rect(panel, HIGHLIGHT, bar)
+    draw_panel(screen, panel, flow.ui_progress)
+
+
+def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    draw_scoreboard(screen, font, flow)
 
 
 def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font], flow: Flow) -> None:
@@ -332,6 +427,8 @@ def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font
         draw_survived(screen, flow)
     if flow.phase in TITLE_PHASES:
         draw_title(screen, big, font, flow)
+    elif flow.phase in NAME_UI:
+        draw_name_entry(screen, font, flow)
     elif flow.phase is Phase.COUNTDOWN:
         draw_countdown(screen, big, flow)
     elif flow.phase in MENU_PHASES and flow.menu is not None:
@@ -348,8 +445,20 @@ def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font
 def handle_event(flow: Flow, event: pygame.event.Event) -> None:
     if event.type == pygame.QUIT:
         flow.quit()
+    elif event.type == pygame.KEYDOWN and flow.accepts_text:
+        # entrada de nome: letras são texto; Enter, Esc e Backspace são comandos
+        if event.key in CONFIRM_KEYS and event.key != pygame.K_SPACE:
+            flow.confirm()
+        elif event.key == pygame.K_ESCAPE:
+            flow.escape()
+        elif event.key == pygame.K_BACKSPACE:
+            flow.backspace()
+        elif event.unicode:
+            flow.type_text(event.unicode)
     elif event.type == pygame.KEYDOWN:
-        if event.key in KEYS:
+        if event.key in WASD:
+            flow.direction(WASD[event.key])
+        elif event.key in KEYS:
             flow.direction(KEYS[event.key])
         elif event.key in CONFIRM_KEYS:
             flow.confirm()
@@ -360,7 +469,7 @@ def handle_event(flow: Flow, event: pygame.event.Event) -> None:
 def run() -> None:
     audio_module.pre_init()
     pygame.init()
-    flow = Flow(settings_path=SETTINGS_PATH)
+    flow = Flow(settings_path=SETTINGS_PATH, highscores_path=HIGHSCORES_PATH)
     audio = audio_module.Audio.create(flow.settings)
     screen = pygame.display.set_mode((flow.game.width * CELL, flow.game.height * CELL))
     pygame.display.set_caption("Snake")

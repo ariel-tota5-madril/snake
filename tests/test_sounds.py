@@ -105,3 +105,10 @@ def test_boom_is_long_loud_and_clean():
     assert 500 <= duration_ms(samples) <= 700
     assert volume > sounds.SFX[SoundEvent.EAT][1]
     assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO
+
+
+# 005 / T009 — blip de digitação
+def test_name_type_blip_is_short_and_soft():
+    samples, volume = sounds.SFX[SoundEvent.NAME_TYPE]
+    assert duration_ms(samples) <= 40
+    assert volume < sounds.SFX[SoundEvent.EAT][1]

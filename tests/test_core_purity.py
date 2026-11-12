@@ -4,8 +4,10 @@ from pathlib import Path
 import snake.core
 import snake.flow
 import snake.frenzy
+import snake.highscores
 import snake.juice
 import snake.menu
+import snake.scoreboard
 import snake.settings
 import snake.sounds
 import snake.synth
@@ -54,3 +56,10 @@ def test_audio_logic_modules_do_not_import_rendering_or_clock():
 def test_frenzy_does_not_import_rendering_or_clock():
     imported = imports_of(snake.frenzy)
     assert not imported & FORBIDDEN, f"frenzy importa {imported & FORBIDDEN}"
+
+
+# 005 / T002 — placar e sua animação também são lógica pura
+def test_highscore_modules_do_not_import_rendering_or_clock():
+    for module in (snake.highscores, snake.scoreboard):
+        imported = imports_of(module)
+        assert not imported & FORBIDDEN, f"{module.__name__} importa {imported & FORBIDDEN}"

@@ -23,8 +23,8 @@ FR-010, FR-010a).
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 [P] Create `src/snake/highscores.py` and `src/snake/scoreboard.py` with module docstrings only
-- [ ] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.highscores` and `snake.scoreboard` import no `pygame`, `time` or `datetime`
+- [X] T001 [P] Create `src/snake/highscores.py` and `src/snake/scoreboard.py` with module docstrings only
+- [X] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.highscores` and `snake.scoreboard` import no `pygame`, `time` or `datetime`
 
 **Checkpoint**: `pytest` verde; jogo igual ao da 004.
 
@@ -32,8 +32,8 @@ FR-010, FR-010a).
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T003 Write failing tests in `tests/test_juice.py`: `ParticleBurst(..., angle=(lo, hi))` creates particles whose velocity angles are within the range; default still covers all directions
-- [ ] T004 Implement the `angle` parameter of `ParticleBurst` in `src/snake/juice.py`
+- [X] T003 Write failing tests in `tests/test_juice.py`: `ParticleBurst(..., angle=(lo, hi))` creates particles whose velocity angles are within the range; default still covers all directions
+- [X] T004 Implement the `angle` parameter of `ParticleBurst` in `src/snake/juice.py`
 
 **Checkpoint**: `pytest` verde.
 
@@ -47,15 +47,15 @@ FR-010, FR-010a).
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T005 [P] [US1] Write failing tests in `tests/test_menu.py`: `TITLE_OPTIONS == (PLAY, OPTIONS, QUIT)` with QUIT labeled "Sair"; `NameEntry` accepts ASCII letters, digits and space up to 10 chars (returns False beyond the limit or for other chars), `backspace` returns False when empty, `value` strips spaces, `confirmable` is False for empty/only spaces, `initial` prefills
-- [ ] T006 [US1] Write failing tests in `tests/test_flow.py` and update the helpers (`to_playing`, `advance_through_title`, `sounds_until`, `to_title`-based tests) to go through the name entry: confirming PLAY goes TITLE_OUT → NAME_IN → NAME (`accepts_text`); `type_text`/`backspace` edit and emit `NAME_TYPE` only when the text changes; Enter with empty name does nothing (no sound); Enter with a name emits `CONFIRM`, goes NAME_OUT → COUNTDOWN and sets `player_name`; Esc in NAME returns to TITLE_IN without `MUSIC_TITLE`; the name entry reopens prefilled; QUIT on the title requests quit with `CONFIRM`
+- [X] T005 [P] [US1] Write failing tests in `tests/test_menu.py`: `TITLE_OPTIONS == (PLAY, OPTIONS, QUIT)` with QUIT labeled "Sair"; `NameEntry` accepts ASCII letters, digits and space up to 10 chars (returns False beyond the limit or for other chars), `backspace` returns False when empty, `value` strips spaces, `confirmable` is False for empty/only spaces, `initial` prefills
+- [X] T006 [US1] Write failing tests in `tests/test_flow.py` and update the helpers (`to_playing`, `advance_through_title`, `sounds_until`, `to_title`-based tests) to go through the name entry: confirming PLAY goes TITLE_OUT → NAME_IN → NAME (`accepts_text`); `type_text`/`backspace` edit and emit `NAME_TYPE` only when the text changes; Enter with empty name does nothing (no sound); Enter with a name emits `CONFIRM`, goes NAME_OUT → COUNTDOWN and sets `player_name`; Esc in NAME returns to TITLE_IN without `MUSIC_TITLE`; the name entry reopens prefilled; QUIT on the title requests quit with `CONFIRM`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `NameEntry`, `MenuOption.QUIT = "Sair"` and the new `TITLE_OPTIONS` in `src/snake/menu.py`
-- [ ] T008 [US1] Implement the `NAME_IN`/`NAME`/`NAME_OUT` phases, `type_text`, `backspace`, `accepts_text`, `player_name` and title QUIT in `src/snake/flow.py`; add `NAME_TYPE` to `SoundEvent`
-- [ ] T009 [US1] Synthesize `NAME_TYPE` in `src/snake/sounds.py` (with a test in `tests/test_sounds.py`)
-- [ ] T010 [US1] In `src/snake/app.py`: draw the name entry panel (label, field with blinking cursor, hint); send `event.unicode` / Backspace while `flow.accepts_text`; map W/A/S/D to directions otherwise
+- [X] T007 [US1] Implement `NameEntry`, `MenuOption.QUIT = "Sair"` and the new `TITLE_OPTIONS` in `src/snake/menu.py`
+- [X] T008 [US1] Implement the `NAME_IN`/`NAME`/`NAME_OUT` phases, `type_text`, `backspace`, `accepts_text`, `player_name` and title QUIT in `src/snake/flow.py`; add `NAME_TYPE` to `SoundEvent`
+- [X] T009 [US1] Synthesize `NAME_TYPE` in `src/snake/sounds.py` (with a test in `tests/test_sounds.py`)
+- [X] T010 [US1] In `src/snake/app.py`: draw the name entry panel (label, field with blinking cursor, hint); send `event.unicode` / Backspace while `flow.accepts_text`; map W/A/S/D to directions otherwise
 
 **Checkpoint**: nome antes de cada partida; Sair na tela inicial; WASD; `pytest` verde.
 
@@ -69,16 +69,16 @@ FR-010, FR-010a).
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T011 [P] [US2] Write failing tests in `tests/test_highscores.py`: `rank_for`/`insert` on empty, partial and full tables; ties put the newcomer below; full table drops the 10th; non-qualifying returns None and leaves the table unchanged; same name repeats; `save` + `load` round-trip (creates folder); missing file, invalid JSON, non-list, and entries with bad name/score are tolerated (bad entries dropped, rest sorted and capped)
-- [ ] T012 [P] [US2] Write failing tests in `tests/test_scoreboard.py` for the static board: non-qualifying → `done` immediately, `outside` set, `view_top` at the end of the list; `rows()` lists the entries at their lines; `scroll` moves one line within [0, N − 5] and returns False at the limits; `scroll` is ignored while not done
-- [ ] T013 [US2] Write failing tests in `tests/test_flow.py` (and update end-menu tests in `tests/test_flow.py` / `tests/test_menu.py`): `END_OPTIONS == (PLAY_AGAIN, TITLE)`; game over / win / Frenzy timeout insert the result and save it to `highscores_path`; MENU shows `scoreboard`; once done, ↑/↓ scroll with NAV, ←/→ switch options with NAV; "Jogar de novo" restarts to COUNTDOWN without the name entry; "Tela inicial" and Esc go to TITLE_IN with `MUSIC_TITLE` and a fresh game; a Flow created with the same path loads the saved table
+- [X] T011 [P] [US2] Write failing tests in `tests/test_highscores.py`: `rank_for`/`insert` on empty, partial and full tables; ties put the newcomer below; full table drops the 10th; non-qualifying returns None and leaves the table unchanged; same name repeats; `save` + `load` round-trip (creates folder); missing file, invalid JSON, non-list, and entries with bad name/score are tolerated (bad entries dropped, rest sorted and capped)
+- [X] T012 [P] [US2] Write failing tests in `tests/test_scoreboard.py` for the static board: non-qualifying → `done` immediately, `outside` set, `view_top` at the end of the list; `rows()` lists the entries at their lines; `scroll` moves one line within [0, N − 5] and returns False at the limits; `scroll` is ignored while not done
+- [X] T013 [US2] Write failing tests in `tests/test_flow.py` (and update end-menu tests in `tests/test_flow.py` / `tests/test_menu.py`): `END_OPTIONS == (PLAY_AGAIN, TITLE)`; game over / win / Frenzy timeout insert the result and save it to `highscores_path`; MENU shows `scoreboard`; once done, ↑/↓ scroll with NAV, ←/→ switch options with NAV; "Jogar de novo" restarts to COUNTDOWN without the name entry; "Tela inicial" and Esc go to TITLE_IN with `MUSIC_TITLE` and a fresh game; a Flow created with the same path loads the saved table
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implement `Entry` and `Highscores` in `src/snake/highscores.py`
-- [ ] T015 [US2] Implement the static part of `Scoreboard` (`rows`, `view_top`, `scroll`, `outside`, `done`) in `src/snake/scoreboard.py`
-- [ ] T016 [US2] Update `src/snake/menu.py` (`PLAY_AGAIN`, `END_OPTIONS`, `EndMenu`) and `src/snake/flow.py` (`highscores_path`, insert+save at game end, scoreboard in MENU, new MENU inputs and exits, Options no longer reachable from the end screen)
-- [ ] T017 [US2] Draw the vertical scoreboard panel in `src/snake/app.py` (title, 5 clipped lines with rank/name/score in fixed-width characters, ▲/▼ indicators, outside result, side-by-side options) and pass `HIGHSCORES_PATH`
+- [X] T014 [US2] Implement `Entry` and `Highscores` in `src/snake/highscores.py`
+- [X] T015 [US2] Implement the static part of `Scoreboard` (`rows`, `view_top`, `scroll`, `outside`, `done`) in `src/snake/scoreboard.py`
+- [X] T016 [US2] Update `src/snake/menu.py` (`PLAY_AGAIN`, `END_OPTIONS`, `EndMenu`) and `src/snake/flow.py` (`highscores_path`, insert+save at game end, scoreboard in MENU, new MENU inputs and exits, Options no longer reachable from the end screen)
+- [X] T017 [US2] Draw the vertical scoreboard panel in `src/snake/app.py` (title, 5 clipped lines with rank/name/score in fixed-width characters, ▲/▼ indicators, outside result, side-by-side options) and pass `HIGHSCORES_PATH`
 
 **Checkpoint**: placar jogável de ponta a ponta, sem animação; `pytest` verde.
 

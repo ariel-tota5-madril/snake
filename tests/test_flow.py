@@ -6,21 +6,32 @@ MENU_PHASES = {Phase.MENU_IN, Phase.MENU}
 
 
 def to_playing(flow: Flow) -> Flow:
-    """Avança pelas telas (inicial, contagem) até a partida começar."""
+    """Avança pelas telas (inicial, nome, contagem) até a partida começar."""
     for _ in range(1000):
         if flow.phase is Phase.PLAYING:
             return flow
         if flow.phase is Phase.TITLE:
             flow.confirm()
+        if flow.phase is Phase.NAME:
+            enter_name(flow)
         flow.update(50)
     raise AssertionError(f"não chegou em PLAYING (fase {flow.phase})")
 
 
+def enter_name(flow: Flow, name: str = "TESTE") -> None:
+    """Na entrada de nome: apaga o que houver, digita `name` e confirma (005)."""
+    while flow.name_entry.text:
+        flow.backspace()
+    for ch in name:
+        flow.type_text(ch)
+    flow.confirm()
+
+
 def to_menu(flow: Flow) -> Flow:
-    """Deixa a cobra bater na parede e avança até o menu estar aceitando teclas."""
+    """Deixa a cobra bater na parede e avança até o placar terminar e aceitar as opções (005)."""
     flow.game.food = (0, 0)
     for _ in range(1000):
-        if flow.phase is Phase.MENU:
+        if flow.phase is Phase.MENU and flow.scoreboard.done:
             return flow
         flow.update(50)
     raise AssertionError(f"não chegou em MENU (fase {flow.phase})")
@@ -57,14 +68,17 @@ def test_game_over_leads_to_menu():
     flow = to_menu(to_playing(Flow(seed=1)))
     assert flow.game.status is Status.GAME_OVER
     assert flow.menu is not None
-    assert flow.menu.selected is MenuOption.RESTART
+    assert flow.menu.selected is MenuOption.PLAY_AGAIN  # 005
 
 
 def advance_through_title(flow: Flow) -> Flow:
-    """Passa pela tela inicial e pela contagem sem exigir que a fase PLAYING seja observada."""
+    """Passa pela tela inicial, pelo nome e pela contagem sem exigir que PLAYING seja observada."""
     flow.update(UI_ANIM_MS)
     flow.confirm()
-    flow.update(UI_ANIM_MS)
+    flow.update(UI_ANIM_MS)  # TITLE_OUT -> NAME_IN
+    flow.update(UI_ANIM_MS)  # NAME_IN -> NAME
+    enter_name(flow)
+    flow.update(UI_ANIM_MS)  # NAME_OUT -> COUNTDOWN
     return flow
 
 
@@ -79,12 +93,16 @@ def test_win_leads_to_menu():
     assert flow.menu is not None
 
 
-def test_menu_selection_moves_with_up_and_down():
+def test_menu_selection_moves_with_left_and_right():
     flow = to_menu(to_playing(Flow(seed=1)))
-    flow.direction(Direction.DOWN)
-    assert flow.menu.selected is MenuOption.OPTIONS  # 003/FR-016: Restart, Opções, Quit
-    flow.direction(Direction.UP)
-    assert flow.menu.selected is MenuOption.RESTART
+    flow.drain_sounds()
+    flow.direction(Direction.RIGHT)
+    assert flow.menu.selected is MenuOption.TITLE  # 005/FR-010: Jogar de novo, Tela inicial
+    assert flow.drain_sounds() == [SoundEvent.NAV]
+    flow.direction(Direction.RIGHT)
+    assert flow.drain_sounds() == []
+    flow.direction(Direction.LEFT)
+    assert flow.menu.selected is MenuOption.PLAY_AGAIN
 
 
 def test_restart_starts_a_new_game():
@@ -97,14 +115,6 @@ def test_restart_starts_a_new_game():
     assert flow.game.score == 0
     assert flow.menu is None
     to_playing(flow)  # e a nova partida de fato começa
-
-
-def test_quit_option_requests_quit():
-    flow = to_menu(to_playing(Flow(seed=1)))
-    flow.direction(Direction.DOWN)
-    flow.direction(Direction.DOWN)  # 003/FR-016: Quit é a terceira opção
-    flow.confirm()
-    assert flow.quit_requested
 
 
 def test_quit_works_in_any_phase():
@@ -194,7 +204,7 @@ def test_game_over_shakes_before_showing_the_menu():
     flow.update(1)
     assert flow.shake.offset == (0, 0)
     assert flow.phase is not Phase.SHAKING
-    assert flow.menu is not None and flow.menu.selected is MenuOption.RESTART
+    assert flow.menu is not None and flow.menu.selected is MenuOption.PLAY_AGAIN
 
 
 def test_win_goes_to_menu_without_shaking():
@@ -229,21 +239,30 @@ def test_new_flow_starts_with_title_entering_then_title():
     assert flow.phase is Phase.TITLE
 
 
-def test_confirm_on_title_leaves_and_starts_countdown():
+def title_to_countdown(flow: Flow) -> Flow:
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    flow.update(UI_ANIM_MS)
+    enter_name(flow)
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+    return flow
+
+
+def test_confirm_on_title_leaves_then_asks_for_the_name():
     flow = to_title(Flow(seed=1))
-    flow.direction(Direction.UP)  # setas ignoradas na tela inicial
+    flow.direction(Direction.DOWN)  # 005: agora o menu tem três opções
+    flow.direction(Direction.UP)
     assert flow.phase is Phase.TITLE
     flow.confirm()
     assert flow.phase is Phase.TITLE_OUT
     flow.update(UI_ANIM_MS)
-    assert flow.phase is Phase.COUNTDOWN
+    assert flow.phase is Phase.NAME_IN  # 005/FR-001: nome antes da contagem
 
 
 # T021
 def test_countdown_shows_3_2_1_and_snake_waits():
-    flow = to_title(Flow(seed=1))
-    flow.confirm()
-    flow.update(UI_ANIM_MS)
+    flow = title_to_countdown(to_title(Flow(seed=1)))
     start = flow.game.snake
     numbers = []
     for _ in range(int(COUNTDOWN_MS / 100) - 1):
@@ -280,7 +299,6 @@ def test_menu_key_during_entrance_completes_it_and_is_applied():
     assert flow.phase is Phase.MENU_IN
     flow.direction(Direction.DOWN)
     assert flow.phase is Phase.MENU
-    assert flow.menu.selected is MenuOption.OPTIONS  # 003/FR-016
 
 
 def test_restart_leaves_menu_then_goes_to_countdown_not_title():
@@ -292,15 +310,6 @@ def test_restart_leaves_menu_then_goes_to_countdown_not_title():
     assert flow.phase is Phase.COUNTDOWN
     assert flow.game.status is Status.RUNNING
     assert flow.menu is None
-
-
-def test_quit_from_menu_is_immediate():
-    flow = to_menu(to_playing(Flow(seed=1)))
-    flow.direction(Direction.DOWN)
-    flow.direction(Direction.DOWN)  # 003/FR-016
-    flow.confirm()
-    assert flow.quit_requested
-    assert flow.phase is Phase.MENU
 
 
 # T023
@@ -381,6 +390,7 @@ EXPECTED_SOUND_EVENTS = {
     "STEP", "EAT", "PULSE_POP", "CRASH", "COUNT", "GO", "NAV", "CONFIRM", "LOSE", "WIN",
     "VOLUME_PREVIEW", "MUSIC_TITLE", "MUSIC_GAME", "MUSIC_STOP", "MUSIC_DUCK", "MUSIC_UNDUCK",
     "TIMER_TICK", "TIMEOUT_ALARM", "MUSIC_FRENZY", "BOOM",  # 004
+    "NAME_TYPE",  # 005
 }
 
 
@@ -454,6 +464,8 @@ def sounds_until(flow: Flow, phase: Phase, dt: float = 50) -> list:
             return events
         if flow.phase is Phase.TITLE:
             flow.confirm()
+        if flow.phase is Phase.NAME:
+            enter_name(flow)
         flow.update(dt)
         events += flow.drain_sounds()
     raise AssertionError(f"não chegou em {phase}")
@@ -562,14 +574,6 @@ def test_options_back_item_returns_to_origin():
     assert flow.phase is Phase.TITLE
 
 
-def test_options_from_end_menu_returns_to_end_menu():
-    flow = to_menu(to_playing(Flow(seed=1)))
-    open_options_from(flow, 1)
-    leave_options(flow)
-    assert flow.phase is Phase.MENU
-    assert flow.menu.selected is MenuOption.OPTIONS
-
-
 def test_escape_pauses_and_freezes_everything():
     flow = to_playing(Flow(seed=1))
     hx, hy = flow.game.snake[0]
@@ -664,9 +668,7 @@ def test_escape_is_ignored_outside_playing_pause_and_options():
     flow = to_title(Flow(seed=1))
     flow.escape()
     assert flow.phase is Phase.TITLE
-    flow.confirm()
-    flow.update(UI_ANIM_MS)
-    assert flow.phase is Phase.COUNTDOWN
+    title_to_countdown(flow)  # 005: passa pela entrada de nome
     flow.escape()
     assert flow.phase is Phase.COUNTDOWN
     to_playing(flow)
@@ -678,7 +680,7 @@ def test_escape_is_ignored_outside_playing_pause_and_options():
     assert flow.phase is Phase.SHAKING
     to_menu(flow)
     flow.escape()
-    assert flow.phase is Phase.MENU
+    assert flow.phase is Phase.MENU_OUT  # 005: Esc no placar = "Tela inicial"
 
 
 def test_pulse_pop_waits_while_paused():
@@ -703,11 +705,9 @@ def drain_while(flow: Flow, ms: float, dt: float = 50) -> list:
 
 
 def test_countdown_beeps_on_each_number_then_go():
-    flow = to_title(Flow(seed=1))
-    flow.drain_sounds()
-    flow.confirm()
-    flow.drain_sounds()
-    events = drain_while(flow, UI_ANIM_MS + COUNTDOWN_MS + 50)
+    flow = title_to_countdown(to_title(Flow(seed=1)))  # 005: com a entrada de nome
+    events = flow.drain_sounds()
+    events += drain_while(flow, COUNTDOWN_MS + 50)
     assert events.count(SoundEvent.COUNT) == 3
     assert events.count(SoundEvent.GO) == 1
     assert events.index(SoundEvent.GO) > max(i for i, e in enumerate(events) if e is SoundEvent.COUNT)
@@ -728,7 +728,9 @@ def test_nav_only_when_selection_changes():
     assert flow.drain_sounds() == []
     flow.direction(Direction.DOWN)
     assert flow.drain_sounds() == [SoundEvent.NAV]
-    flow.direction(Direction.DOWN)  # já está na última
+    flow.direction(Direction.DOWN)
+    flow.drain_sounds()
+    flow.direction(Direction.DOWN)  # já está na última (005: Jogar / Opções / Sair)
     assert flow.drain_sounds() == []
 
 
@@ -741,15 +743,6 @@ def test_confirm_sound_on_accepted_confirmations():
     flow.drain_sounds()
     flow.confirm()  # Restart
     assert SoundEvent.CONFIRM in flow.drain_sounds()
-
-
-def test_quit_plays_confirm_sound():
-    flow = to_menu(to_playing(Flow(seed=1)))
-    flow.direction(Direction.DOWN)
-    flow.direction(Direction.DOWN)
-    flow.drain_sounds()
-    flow.confirm()
-    assert flow.quit_requested and SoundEvent.CONFIRM in flow.drain_sounds()
 
 
 def test_volume_sliders_sound_only_when_value_changes():
@@ -1216,3 +1209,172 @@ def test_survived_ends_back_in_normal_play_with_game_music():
     assert flow.game.snake[0] == head
     flow.update(1)
     assert flow.game.snake[0] != head
+
+
+# --- 005: nome do jogador ---------------------------------------------------------------
+
+
+def at_name(flow: Flow | None = None) -> Flow:
+    flow = to_title(flow or Flow(seed=1))
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.NAME_IN
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.NAME
+    flow.drain_sounds()
+    return flow
+
+
+# T006 — FR-001/FR-002
+def test_name_entry_accepts_text_and_sounds_only_on_change():
+    flow = at_name()
+    assert flow.accepts_text
+    flow.type_text("A")
+    flow.type_text("!")  # ignorado
+    assert flow.name_entry.text == "A"
+    assert flow.drain_sounds() == [SoundEvent.NAME_TYPE]
+    flow.backspace()
+    flow.backspace()  # vazio: nada muda
+    assert flow.drain_sounds() == [SoundEvent.NAME_TYPE]
+
+
+def test_typing_completes_the_name_entrance():
+    flow = to_title(Flow(seed=1))
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.NAME_IN and flow.accepts_text
+    flow.type_text("Z")
+    assert flow.phase is Phase.NAME and flow.name_entry.text == "Z"
+
+
+def test_empty_name_cannot_start_the_game():
+    flow = at_name()
+    flow.confirm()
+    assert flow.phase is Phase.NAME
+    assert flow.drain_sounds() == []
+
+
+def test_confirmed_name_starts_the_countdown():
+    flow = at_name()
+    for ch in " Ana ":
+        flow.type_text(ch)
+    flow.drain_sounds()
+    flow.confirm()
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+    assert flow.phase is Phase.NAME_OUT and not flow.accepts_text
+    assert flow.player_name == "Ana"
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+
+
+def test_escape_in_name_entry_returns_to_title_keeping_the_music():
+    flow = at_name()
+    flow.escape()
+    assert flow.phase is Phase.TITLE_IN
+    assert SoundEvent.MUSIC_TITLE not in flow.drain_sounds()
+    assert not flow.accepts_text
+
+
+def test_name_entry_reopens_prefilled_with_the_last_name():
+    flow = at_name()
+    enter_name(flow, "ANA")
+    to_playing(flow)
+    paused(flow)
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)  # "Tela inicial"
+    flow.confirm()
+    while flow.phase is not Phase.TITLE:
+        flow.update(50)
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.name_entry.text == "ANA"
+
+
+def test_quit_on_title_closes_the_game():
+    flow = to_title(Flow(seed=1))
+    flow.drain_sounds()
+    flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)  # Sair
+    flow.drain_sounds()
+    flow.confirm()
+    assert flow.quit_requested
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+
+
+# --- 005: placar de highscore -----------------------------------------------------------
+
+import json  # noqa: E402
+
+from snake.highscores import Entry, Highscores  # noqa: E402
+
+
+def lose_with(flow: Flow, score: int) -> Flow:
+    to_playing(flow)
+    flow.game.score = score
+    return to_menu(flow)
+
+
+# T013 — FR-005/FR-007
+def test_game_end_saves_the_result_and_shows_the_scoreboard(tmp_path):
+    path = tmp_path / "hs.json"
+    flow = Flow(seed=1, highscores_path=path)
+    lose_with(flow, 7)
+    assert flow.scoreboard is not None
+    assert flow.highscores.entries == [Entry("TESTE", 7)]
+    assert json.loads(path.read_text()) == [{"name": "TESTE", "score": 7}]
+    assert Flow(seed=2, highscores_path=path).highscores.entries == [Entry("TESTE", 7)]
+
+
+def test_frenzy_timeout_also_goes_to_the_scoreboard():
+    flow, _ = into_frenzy()
+    flow.game.specials = {(0, 0): 0}
+    flow.frenzy.remaining_ms = 1
+    flow.update(1)
+    for _ in range(200):
+        if flow.phase is Phase.MENU:
+            break
+        flow.update(50)
+    assert flow.scoreboard is not None
+    assert flow.highscores.entries[0].score == 10
+
+
+def test_scoreboard_scrolls_with_up_and_down_once_done(tmp_path):
+    path = tmp_path / "hs.json"
+    Highscores([Entry(f"P{i}", 100 - i) for i in range(9)]).save(path)
+    flow = lose_with(Flow(seed=1, highscores_path=path), 0)
+    flow.drain_sounds()
+    top = flow.scoreboard.view_top
+    flow.direction(Direction.UP)
+    assert flow.scoreboard.view_top == top - 1
+    assert flow.drain_sounds() == [SoundEvent.NAV]
+    flow.scoreboard.view_top = 0
+    flow.direction(Direction.UP)  # já no topo
+    assert flow.drain_sounds() == []
+
+
+def test_play_again_skips_the_name_entry():
+    flow = lose_with(Flow(seed=1), 3)
+    flow.confirm()  # Jogar de novo
+    assert flow.phase is Phase.MENU_OUT
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.COUNTDOWN
+    assert flow.player_name == "TESTE"
+
+
+def test_main_menu_goes_to_title_with_a_fresh_game():
+    flow = lose_with(Flow(seed=1), 3)
+    flow.direction(Direction.RIGHT)  # Tela inicial
+    flow.drain_sounds()
+    flow.confirm()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.TITLE_IN
+    assert SoundEvent.MUSIC_TITLE in flow.drain_sounds()
+    assert flow.game.status is Status.RUNNING and flow.game.score == 0
+    assert flow.scoreboard is None
+
+
+def test_escape_on_the_scoreboard_is_main_menu():
+    flow = lose_with(Flow(seed=1), 3)
+    flow.escape()
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.TITLE_IN

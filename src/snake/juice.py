@@ -65,16 +65,17 @@ class ParticleBurst:
         speed: tuple[float, float] = PARTICLE_SPEED,
         life_ms: float = PARTICLE_LIFE_MS,
         tint: str = "fruit",
+        angle: tuple[float, float] = (0.0, 2 * math.pi),
     ) -> None:
         self.origin = origin
         self.tint = tint
         self.life_ms = life_ms
         self.particles: list[Particle] = []
         for _ in range(count):
-            angle = rng.uniform(0, 2 * math.pi)
+            a = rng.uniform(*angle)  # radianos, y para baixo
             v = rng.uniform(*speed)
             self.particles.append(
-                Particle(origin[0], origin[1], math.cos(angle) * v, math.sin(angle) * v, life_ms=life_ms)
+                Particle(origin[0], origin[1], math.cos(a) * v, math.sin(a) * v, life_ms=life_ms)
             )
 
     def update(self, dt_ms: float) -> None:

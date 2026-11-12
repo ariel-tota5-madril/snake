@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 
 from snake.core import Direction, Game, Status
+from snake.highscores import Entry, Highscores
 from snake.frenzy import SPECIAL_COUNT, Frenzy, step_interval_ms, threshold
 from snake.juice import (
     COLLISION_SHAKE,
@@ -31,7 +32,9 @@ from snake.menu import (
     EndMenu,
     Menu,
     MenuOption,
+    NameEntry,
 )
+from snake.scoreboard import Scoreboard
 from snake.settings import AudioSettings
 
 STEP_MS = 125  # intervalo inicial (001); na 004 o passo segue frenzy.step_interval_ms
@@ -81,6 +84,7 @@ class SoundEvent(Enum):
     TIMEOUT_ALARM = "timeout_alarm"  # 004: tempo do Frenzy esgotado
     MUSIC_FRENZY = "music_frenzy"  # 004: música tensa do Frenzy
     BOOM = "boom"  # 004: impacto de cada palavra da abertura
+    NAME_TYPE = "name_type"  # 005: digitar/apagar no nome
 
 
 class Phase(Enum):
@@ -103,11 +107,16 @@ class Phase(Enum):
     TIMEOUT = "timeout"  # 004: tempo do Frenzy esgotado
     FRENZY_INTRO = "frenzy_intro"  # 004: "FEEDING" / "FRENZY" carimbadas
     SURVIVED = "survived"  # 004: "SURVIVED!" ao superar o Frenzy
+    NAME_IN = "name_in"  # 005: entrada do nome do jogador
+    NAME = "name"
+    NAME_OUT = "name_out"
 
 
-ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN}
-LEAVING = {Phase.TITLE_OUT, Phase.MENU_OUT, Phase.PAUSE_OUT, Phase.OPTIONS_OUT}
+SCOREBOARD_SOUNDS: dict[str, "SoundEvent"] = {}  # preenchido na US3 (eventos do foguete)
+ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.NAME_IN}
+LEAVING = {Phase.TITLE_OUT, Phase.MENU_OUT, Phase.PAUSE_OUT, Phase.OPTIONS_OUT, Phase.NAME_OUT}
 ENTRANCE_DONE = {
+    Phase.NAME_IN: Phase.NAME,
     Phase.TITLE_IN: Phase.TITLE,
     Phase.MENU_IN: Phase.MENU,
     Phase.PAUSE_IN: Phase.PAUSE,
@@ -126,6 +135,7 @@ class Flow:
         height: int = GRID,
         settings: AudioSettings | None = None,
         settings_path: Path | None = None,
+        highscores_path: Path | None = None,
     ) -> None:
         self.game = Game(width=width, height=height, rng=random.Random(seed))
         # RNG separado: efeitos não consomem números do jogo (SC-005), mas seguem a seed (FR-011)
@@ -154,6 +164,12 @@ class Flow:
         self.frenzy_count = 0
         self.timer_pulse = ScorePulse()
         self._impacts = 0
+        self.name_entry: NameEntry | None = None  # 005
+        self.player_name: str | None = None
+        self.highscores_path = highscores_path
+        self.highscores = Highscores.load(highscores_path) if highscores_path else Highscores()
+        self.scoreboard: Scoreboard | None = None
+        self._end_choice = MenuOption.PLAY_AGAIN
         self._enter_title()
 
     # --- consultas ------------------------------------------------------------------------
@@ -183,6 +199,11 @@ class Flow:
         if self.phase in LEAVING:
             return 1 - p
         return 1.0
+
+    @property
+    def accepts_text(self) -> bool:
+        """Na entrada de nome, letras são texto (o adaptador não as trata como WASD)."""
+        return self.phase in (Phase.NAME_IN, Phase.NAME)
 
     @property
     def options_origin(self) -> Phase:
@@ -252,6 +273,9 @@ class Flow:
             return
         if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN):
             self._go(ENTRANCE_DONE[self.phase])  # tecla do menu conclui a entrada (FR-009 da 002)
+        if self.phase is Phase.MENU:
+            self._scoreboard_direction(direction)
+            return
         menu = self._active_menu()
         if menu is None:
             return
@@ -264,26 +288,47 @@ class Flow:
             if self.settings.adjust(field, 1 if direction is Direction.RIGHT else -1):
                 self._emit(SoundEvent.VOLUME_PREVIEW if field == "sfx" else SoundEvent.NAV)
 
+    def type_text(self, ch: str) -> None:
+        """Texto digitado na entrada de nome (005/FR-002)."""
+        if self.phase is Phase.NAME_IN:
+            self._go(Phase.NAME)  # digitar conclui a entrada
+        if self.phase is Phase.NAME and self.name_entry.type(ch):
+            self._emit(SoundEvent.NAME_TYPE)
+
+    def backspace(self) -> None:
+        if self.phase is Phase.NAME_IN:
+            self._go(Phase.NAME)
+        if self.phase is Phase.NAME and self.name_entry.backspace():
+            self._emit(SoundEvent.NAME_TYPE)
+
     def confirm(self) -> None:
-        if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN):
+        if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.NAME_IN):
             self._go(ENTRANCE_DONE[self.phase])  # conclui a entrada e trata a tecla
-        if self.phase in (Phase.TITLE, Phase.MENU, Phase.PAUSE) or (
+        if self.phase is Phase.NAME:
+            if self.name_entry.confirmable:  # nome vazio não começa partida
+                self.player_name = self.name_entry.value
+                self._emit(SoundEvent.CONFIRM)
+                self._go(Phase.NAME_OUT)
+            return
+        if self.phase is Phase.MENU:
+            if not self.scoreboard.done:
+                self.scoreboard.skip()  # Enter pula a animação (005/FR-015)
+                return
+            self._emit(SoundEvent.CONFIRM)
+            self._leave_scoreboard(self.menu.confirm())
+            return
+        if self.phase in (Phase.TITLE, Phase.PAUSE) or (
             self.phase is Phase.OPTIONS and self.options_menu.selected is MenuOption.BACK
         ):
             self._emit(SoundEvent.CONFIRM)
         if self.phase is Phase.TITLE:
-            if self.title_menu.confirm() is MenuOption.PLAY:
+            choice = self.title_menu.confirm()
+            if choice is MenuOption.PLAY:
                 self._go(Phase.TITLE_OUT)
+            elif choice is MenuOption.QUIT:
+                self.quit_requested = True
             else:
                 self._open_options(Phase.TITLE)
-        elif self.phase is Phase.MENU and self.menu is not None:
-            choice = self.menu.confirm()
-            if choice is MenuOption.QUIT:
-                self.quit_requested = True
-            elif choice is MenuOption.OPTIONS:
-                self._open_options(Phase.MENU)
-            else:
-                self._go(Phase.MENU_OUT)
         elif self.phase is Phase.PAUSE:
             choice = self.pause_menu.confirm()
             if choice is MenuOption.OPTIONS:
@@ -294,7 +339,13 @@ class Flow:
             self._leave_options()
 
     def escape(self) -> None:
-        if self.phase is Phase.PLAYING:
+        if self.phase in (Phase.MENU_IN, Phase.MENU):
+            self._leave_scoreboard(MenuOption.TITLE)  # Esc no placar = "Tela inicial"
+        elif self.phase in (Phase.NAME_IN, Phase.NAME):
+            self.name_entry = None
+            self.title_menu = Menu(TITLE_OPTIONS)
+            self._go(Phase.TITLE_IN)  # a música da tela inicial continua tocando
+        elif self.phase is Phase.PLAYING:
             self.pause_menu = Menu(PAUSE_OPTIONS)
             self._emit(SoundEvent.MUSIC_DUCK)
             self._go(Phase.PAUSE_IN)
@@ -315,12 +366,22 @@ class Flow:
         if self.phase in ENTRANCE_DONE and self.phase_ms >= UI_ANIM_MS:
             self._go(ENTRANCE_DONE[self.phase])
         elif self.phase is Phase.TITLE_OUT and self.phase_ms >= UI_ANIM_MS:
+            self.name_entry = NameEntry(self.player_name or "")  # 005: pede o nome
+            self._go(Phase.NAME_IN)
+        elif self.phase is Phase.NAME_OUT and self.phase_ms >= UI_ANIM_MS:
+            self.name_entry = None
             self._go(Phase.COUNTDOWN)
         elif self.phase is Phase.MENU_OUT and self.phase_ms >= UI_ANIM_MS:
-            self.game.restart()
-            self._reset_frenzy()
             self.menu = None
-            self._go(Phase.COUNTDOWN)
+            self.scoreboard = None
+            if self._end_choice is MenuOption.PLAY_AGAIN:
+                self.game.restart()
+                self._reset_frenzy()
+                self._go(Phase.COUNTDOWN)  # mesmo nome, sem pedir de novo (FR-004)
+            else:
+                self._back_to_title()
+        elif self.phase is Phase.MENU:
+            self._update_scoreboard(dt_ms)
         elif self.phase is Phase.PAUSE_OUT and self.phase_ms >= UI_ANIM_MS:
             self._finish_leaving_pause()
         elif self.phase is Phase.OPTIONS_OUT and self.phase_ms >= UI_ANIM_MS:
@@ -510,10 +571,47 @@ class Flow:
         self._go(Phase.TITLE_IN)
 
     def _open_menu(self) -> None:
+        """Fim da partida: registra o resultado no placar (e salva) e abre o placar (005)."""
         self.frenzy = None
         self._emit(SoundEvent.LOSE if self.game.status is Status.GAME_OVER else SoundEvent.WIN)
+        player = Entry(self.player_name or "?", self.game.score)
+        before = list(self.highscores.entries)
+        rank = self.highscores.insert(player.name, player.score)
+        if self.highscores_path is not None:
+            self.highscores.save(self.highscores_path)
+        self.scoreboard = Scoreboard(before, list(self.highscores.entries), rank, player, self._fx_rng)
         self.menu = EndMenu()
         self._go(Phase.MENU_IN)
+
+    def _update_scoreboard(self, dt_ms: float) -> None:
+        self.scoreboard.update(dt_ms)
+        for event in self.scoreboard.drain_events():
+            self._emit(SCOREBOARD_SOUNDS[event])
+
+    def _scoreboard_direction(self, direction: Direction) -> None:
+        """Placar: ↑/↓ rolam, ←/→ escolhem a opção — só depois da animação (005/FR-009/010)."""
+        if not self.scoreboard.done:
+            return
+        if direction in (Direction.UP, Direction.DOWN):
+            moved = self.scoreboard.scroll(-1 if direction is Direction.UP else 1)
+        else:
+            moved = self.menu.move_up() if direction is Direction.LEFT else self.menu.move_down()
+        if moved:
+            self._emit(SoundEvent.NAV)
+
+    def _leave_scoreboard(self, choice: MenuOption) -> None:
+        self._end_choice = choice
+        self._go(Phase.MENU_OUT)
+
+    def _back_to_title(self) -> None:
+        """Abandona a partida e volta ao começo (pausa -> "Tela inicial" e placar -> "Tela inicial")."""
+        self.game.restart()
+        self._reset_frenzy()
+        self.bursts = []
+        self.pulse = ScorePulse()
+        self.shake = ScreenShake(self._fx_rng)
+        self._pop_in_ms = None
+        self._enter_title()
 
     def _open_options(self, origin: Phase) -> None:
         self._options_origin = origin
@@ -538,14 +636,7 @@ class Flow:
         if self._pause_exit is MenuOption.CONTINUE:
             self._go(Phase.RESUME)
             return
-        # "Tela inicial": abandona a partida e volta ao começo
-        self.game.restart()
-        self._reset_frenzy()
-        self.bursts = []
-        self.pulse = ScorePulse()
-        self.shake = ScreenShake(self._fx_rng)
-        self._pop_in_ms = None
-        self._enter_title()
+        self._back_to_title()  # "Tela inicial"
 
     def _go(self, phase: Phase) -> None:
         self.phase = phase
