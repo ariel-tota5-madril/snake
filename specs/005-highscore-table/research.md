@@ -87,3 +87,24 @@ Coordenadas do placar em "linhas" (0 = 1º lugar). `N` = linhas do placar final,
 - Cada linha: número da posição (fixo na linha), nome à esquerda e pontos à direita; desenhados
   caractere a caractere em largura fixa (estilo arcade), o que permite a explosão por letra.
 - Entrada de nome: painel com "Seu nome", o campo com cursor piscando e "Enter para jogar".
+
+## 9. Revisão pós-clarificação (foguete sempre decola, vermelho, ranking)
+
+- **Plataforma de lançamento**: o placar tem sempre 10 posições (vazias como "---"); o foguete
+  parte da linha `y0 = 10` (abaixo da 10ª, fora das posições numeradas) e sobe até `rank`, então
+  a distância é sempre ≥ 1 linha. Pior caso: 10 linhas → subida `(10 + 1,5)/5 = 2,3 s`; total
+  ≈ 0,7 + 2,3 + pouso (até os shatters terminarem, ≤ 0,65 s) + 1,0 ≈ 4,65 s ≤ 5 s.
+- **Câmera**: durante a animação a lista tem 11 linhas (10 + plataforma); `view0 = 11 − 5 = 6`,
+  para a plataforma aparecer na base da área visível. Ao terminar, a vista é limitada a
+  `10 − 5 = 5` (rolagem manual nas 10 posições).
+- **Impactos**: para `k` de 9 até `rank`, só as linhas ocupadas no placar antigo são atingidas
+  (`y ≤ k + 0,5`). Se o placar estava cheio, a linha 9 é o antigo 10º: vira `Shatter` sem
+  remontar (cai). A ignição não tem mais impacto.
+- **Vermelho**: cada linha atingida guarda o instante do impacto; a cor vai de branco a vermelho
+  em 400 ms (`red = min(1, t/400)`) e fica vermelha até o placar fechar. `Shatter.red` faz o
+  mesmo para as letras voando. Um placar novo começa sem vermelho.
+- **Posições vazias**: `Scoreboard.empty_slots()` lista as posições 0–9 sem nome parado nelas
+  (nem letras chegando); o desenho mostra "---" nelas. O nome em voo não ocupa posição até pousar.
+- **Ranking da tela inicial**: `Scoreboard.viewer(entries)` — sem animação, sem jogador, vista no
+  topo. Fases `RANKING_IN`/`RANKING`/`RANKING_OUT` no `Flow`; ↑/↓ rolam (NAV), Enter/Esc voltam
+  à tela inicial (sem trocar a música). Tela inicial: Jogar / Ranking / Opções / Sair.

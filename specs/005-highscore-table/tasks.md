@@ -130,6 +130,19 @@ FR-010, FR-010a).
 
 ---
 
+## Phase 8: Clarify follow-up — foguete sempre decola, vermelho e ranking
+
+**Purpose**: aplicar as clarificações da sessão 2 (FR-006, FR-010a, FR-010b, FR-012, FR-013a, FR-013b, FR-016)
+
+- [ ] T029 [P] Update and write failing tests in `tests/test_scoreboard.py`: rocket starts at y = 10 with `view_top` 6 even on an empty table and climbs ≥ 1 line (entering at the 10th still launches); no impact at ignition; full table → the old 10th is the first hit and falls (no reform); every hit entry ends with `red == 1` (rising over 400 ms) and shatters expose `red`; `empty_slots()` lists unoccupied positions and excludes the flying name; scroll range 0–5 for any table; worst case (10 lines) still ≤ 5 s; `Scoreboard.viewer` starts at the top, done, no player, no red
+- [ ] T030 [P] Update and write failing tests in `tests/test_menu.py` and `tests/test_flow.py`: `TITLE_OPTIONS == (PLAY, RANKING, OPTIONS, QUIT)`; title navigation indexes (Opções, Sair) shift by one; RANKING opens RANKING_IN → RANKING with `ranking` at the top; ↑/↓ scroll with NAV; Enter/Esc go back to TITLE without music change
+- [ ] T031 Implement the launch pad, path impacts, red, `empty_slots` and `viewer` in `src/snake/scoreboard.py`
+- [ ] T032 Implement `MenuOption.RANKING` in `src/snake/menu.py` and the ranking phases in `src/snake/flow.py`
+- [ ] T033 Draw the 10 slots with "---", red names (static and flying) and the ranking screen in `src/snake/app.py`; title panel with 4 options
+- [ ] T034 Re-render the animation frames (empty table, full table) and re-run the headless drive
+
+---
+
 ## Dependencies & Execution Order
 
 - Setup → Foundational → US1 → US2 → US3 → US4 → Polish

@@ -71,3 +71,25 @@ mesmo estado final que `update` até o fim (posições, câmera, `first_place`),
 
 `ParticleBurst(..., angle: tuple[float, float] = (0, 2π))`: faixa de ângulos (radianos, y para
 baixo) das partículas; padrão inalterado.
+
+## Revisão pós-clarificação
+
+```python
+class Scoreboard:
+    @classmethod
+    def viewer(cls, entries: list[Entry], rng: random.Random) -> "Scoreboard": ...
+    def empty_slots(self) -> list[int]: ...
+
+@dataclass(frozen=True)
+class RowView:
+    y: float
+    entry: Entry
+    is_player: bool
+    red: float = 0.0
+
+class Shatter:
+    red: float
+```
+
+Garantias novas: o foguete sempre parte de `y = 10` e sobe ≥ 1 linha; todo nome atingido termina
+com `red == 1`; um `Scoreboard` novo não tem vermelho.

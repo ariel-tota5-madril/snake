@@ -76,3 +76,15 @@ MENU ──Tela inicial / Esc──▶ MENU_OUT ──▶ TITLE_IN (restart, MUS
 
 `NAME_TYPE` (digitar/apagar com mudança), `ROCKET_IGNITE`, `ROCKET_LAUNCH`, `ROCKET_HIT`,
 `ROCKET_LAND`, `FIRST_PLACE` — os cinco últimos vêm de `scoreboard.drain_events()`.
+
+## Revisão pós-clarificação
+
+| Nome | Mudança |
+|------|---------|
+| `MenuOption.RANKING` | "Ranking"; `TITLE_OPTIONS = (PLAY, RANKING, OPTIONS, QUIT)` |
+| `Scoreboard.viewer(entries)` | consulta: `rank=None`, sem `outside`, `view_top = 0`, `done` |
+| `Scoreboard.empty_slots() -> list[int]` | posições 0–9 a desenhar como "---" |
+| `RowView.red: float` | 0 → 1 em 400 ms após o impacto; fica 1 |
+| `Shatter.red: float` | idem, para as letras em voo |
+| plataforma | `rocket_y` começa em 10.0 (fora das posições); `view_top` começa em 6 |
+| Flow | fases `RANKING_IN`/`RANKING`/`RANKING_OUT`; `ranking: Scoreboard \| None` |

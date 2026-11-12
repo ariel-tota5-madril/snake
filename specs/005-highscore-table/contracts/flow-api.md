@@ -39,3 +39,9 @@ salvo nele ao fim de cada partida.
 - O placar é salvo uma vez por partida, no momento em que ela termina.
 - "Jogar de novo" não passa pela entrada de nome; "Tela inicial" sim (já preenchida).
 - `TITLE_IN` continua ignorando setas (002).
+
+## Revisão pós-clarificação
+
+- `TITLE`: `RANKING` → `RANKING_IN` → `RANKING` (consulta do placar; ↑/↓ rolam com NAV; Enter/Esc
+  → `RANKING_OUT` → `TITLE`, sem trocar a música).
+- Consulta nova: `ranking: Scoreboard | None`.

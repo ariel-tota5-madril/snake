@@ -27,3 +27,7 @@ Para começar com o placar vazio: `rm ~/.config/snake/highscores.json`.
 | 14 | WASD na partida e nos menus | funciona como setas |
 | 15 | Sair na tela inicial | fecha o jogo |
 | 16 | Corromper o JSON e abrir | abre com placar vazio, sem erro |
+| 17 | Primeiro lugar com o placar vazio | o nome decola de baixo da 10ª e sobe pelas posições "---" até a 1ª |
+| 18 | Ultrapassar nomes | cada nome atingido fica vermelho (animado) e continua vermelho; ao reabrir o placar, tudo branco |
+| 19 | Placar cheio | o antigo 10º explode quando o foguete passa por ele e cai pela base |
+| 20 | Tela inicial → Ranking | placar do 1º lugar, sem animação; ↑/↓ rolam; Enter/Esc voltam |
