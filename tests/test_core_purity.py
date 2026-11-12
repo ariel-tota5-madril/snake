@@ -5,6 +5,9 @@ import snake.core
 import snake.flow
 import snake.juice
 import snake.menu
+import snake.settings
+import snake.sounds
+import snake.synth
 
 FORBIDDEN = {"pygame", "time", "datetime"}
 
@@ -35,5 +38,12 @@ def test_menu_does_not_import_rendering_or_clock():
 # 002 / T002 — efeitos e fluxo de telas também são lógica pura
 def test_juice_and_flow_do_not_import_rendering_or_clock():
     for module in (snake.juice, snake.flow):
+        imported = imports_of(module)
+        assert not imported & FORBIDDEN, f"{module.__name__} importa {imported & FORBIDDEN}"
+
+
+# 003 / T002 — síntese, catálogo e configuração também são lógica pura
+def test_audio_logic_modules_do_not_import_rendering_or_clock():
+    for module in (snake.synth, snake.sounds, snake.settings):
         imported = imports_of(module)
         assert not imported & FORBIDDEN, f"{module.__name__} importa {imported & FORBIDDEN}"

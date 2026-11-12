@@ -7,6 +7,7 @@ from functools import cache
 
 import pygame
 
+from snake import audio as audio_module
 from snake.core import Direction, Status
 from snake.flow import UI_ANIM_MS, Flow, Phase
 from snake.juice import ease_out
@@ -178,8 +179,10 @@ def handle_event(flow: Flow, event: pygame.event.Event) -> None:
 
 
 def run() -> None:
+    audio_module.pre_init()
     pygame.init()
     flow = Flow()
+    audio = audio_module.Audio.create()
     screen = pygame.display.set_mode((flow.game.width * CELL, flow.game.height * CELL))
     pygame.display.set_caption("Snake")
     fonts = (pygame.font.Font(None, round(36 * S)), pygame.font.Font(None, round(96 * S)))
@@ -188,5 +191,7 @@ def run() -> None:
         for event in pygame.event.get():
             handle_event(flow, event)
         flow.update(clock.tick(FPS))
+        for sound in flow.drain_sounds():
+            audio.play(sound)
         draw(screen, fonts, flow)
     pygame.quit()

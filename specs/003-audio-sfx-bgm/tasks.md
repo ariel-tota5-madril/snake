@@ -28,8 +28,8 @@ FR-016 mudou esse menu.
 
 **Purpose**: Módulos novos e a guarda de pureza
 
-- [ ] T001 [P] Create `src/snake/synth.py`, `src/snake/sounds.py`, `src/snake/settings.py` and `src/snake/audio.py` with module docstrings only
-- [ ] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.synth`, `snake.sounds` and `snake.settings` import no `pygame`, `time` or `datetime`
+- [X] T001 [P] Create `src/snake/synth.py`, `src/snake/sounds.py`, `src/snake/settings.py` and `src/snake/audio.py` with module docstrings only
+- [X] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.synth`, `snake.sounds` and `snake.settings` import no `pygame`, `time` or `datetime`
 
 **Checkpoint**: `pytest` verde; o jogo continua igual ao da 002.
 
@@ -42,11 +42,11 @@ todas as histórias
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Write failing tests in `tests/test_synth.py`: `render()` length equals the sum of note durations at 22 050 Hz (±1 sample per note); all samples within [−32767, 32767]; first and last sample of each note close to 0 ("rampa de 2 ms"); `freq == 0` renders silence; `noise` is deterministic; `freq_end` slides pitch; `mix()` pads the shorter track and clips
-- [ ] T004 Implement `Note`, `render()` and `mix()` with `square50`, `square25`, `square12`, `triangle` and LFSR `noise` waves in `src/snake/synth.py`
-- [ ] T005 Write failing tests in `tests/test_flow.py`: `SoundEvent` exists with the members of data-model.md; `drain_sounds()` returns queued events in order and empties the queue
-- [ ] T006 Add `SoundEvent` enum and the event queue with `drain_sounds()` to `src/snake/flow.py`
-- [ ] T007 Implement `Audio.create(settings)` in `src/snake/audio.py` (`pre_init(22050, -16, 1, 512)`, 16 channels, music on a reserved channel) falling back to `SilentAudio` when the mixer fails; wire `src/snake/app.py` to build sounds once, create the audio and play `flow.drain_sounds()` every frame
+- [X] T003 Write failing tests in `tests/test_synth.py`: `render()` length equals the sum of note durations at 22 050 Hz (±1 sample per note); all samples within [−32767, 32767]; first and last sample of each note close to 0 ("rampa de 2 ms"); `freq == 0` renders silence; `noise` is deterministic; `freq_end` slides pitch; `mix()` pads the shorter track and clips
+- [X] T004 Implement `Note`, `render()` and `mix()` with `square50`, `square25`, `square12`, `triangle` and LFSR `noise` waves in `src/snake/synth.py`
+- [X] T005 Write failing tests in `tests/test_flow.py`: `SoundEvent` exists with the members of data-model.md; `drain_sounds()` returns queued events in order and empties the queue
+- [X] T006 Add `SoundEvent` enum and the event queue with `drain_sounds()` to `src/snake/flow.py`
+- [X] T007 Implement `Audio.create(settings)` in `src/snake/audio.py` (`pre_init(22050, -16, 1, 512)`, 16 channels, music on a reserved channel) falling back to `SilentAudio` when the mixer fails; wire `src/snake/app.py` to build sounds once, create the audio and play `flow.drain_sounds()` every frame
 
 **Checkpoint**: `pytest` verde; o jogo abre igual (ainda sem eventos sonoros); com `SDL_AUDIODRIVER=dummy` também.
 

@@ -17,6 +17,27 @@ COUNTDOWN_MS = 3000
 GRID = 30  # grade 30x30 (FR-014); o padrão 20x20 do núcleo continua sendo o da 001
 
 
+class SoundEvent(Enum):
+    """O que deve soar; o Flow só avisa, quem toca é o adaptador de áudio (Princípio I)."""
+
+    STEP = "step"
+    EAT = "eat"
+    PULSE_POP = "pulse_pop"
+    CRASH = "crash"
+    COUNT = "count"
+    GO = "go"
+    NAV = "nav"
+    CONFIRM = "confirm"
+    LOSE = "lose"
+    WIN = "win"
+    VOLUME_PREVIEW = "volume_preview"
+    MUSIC_TITLE = "music_title"
+    MUSIC_GAME = "music_game"
+    MUSIC_STOP = "music_stop"
+    MUSIC_DUCK = "music_duck"
+    MUSIC_UNDUCK = "music_unduck"
+
+
 class Phase(Enum):
     TITLE_IN = "title_in"
     TITLE = "title"
@@ -51,8 +72,17 @@ class Flow:
         self.phase = Phase.TITLE_IN
         self.phase_ms = 0.0
         self._step_elapsed = 0.0
+        self._sounds: list[SoundEvent] = []
 
     # --- consultas ------------------------------------------------------------------------
+
+    def drain_sounds(self) -> list[SoundEvent]:
+        """Devolve os eventos sonoros acumulados desde a última chamada e limpa a fila."""
+        sounds, self._sounds = self._sounds, []
+        return sounds
+
+    def _emit(self, event: SoundEvent) -> None:
+        self._sounds.append(event)
 
     @property
     def countdown_number(self) -> int | None:

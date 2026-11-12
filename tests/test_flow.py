@@ -369,3 +369,26 @@ def test_restart_to_first_move_within_3_4_seconds():
         if head is not None and flow.game.snake[0] != head:
             break
     assert elapsed <= 3400
+
+
+# --- 003: eventos sonoros ----------------------------------------------------------------
+
+from snake.flow import SoundEvent  # noqa: E402
+
+EXPECTED_SOUND_EVENTS = {
+    "STEP", "EAT", "PULSE_POP", "CRASH", "COUNT", "GO", "NAV", "CONFIRM", "LOSE", "WIN",
+    "VOLUME_PREVIEW", "MUSIC_TITLE", "MUSIC_GAME", "MUSIC_STOP", "MUSIC_DUCK", "MUSIC_UNDUCK",
+}
+
+
+# T005
+def test_sound_event_members():
+    assert {e.name for e in SoundEvent} == EXPECTED_SOUND_EVENTS
+
+
+def test_drain_sounds_returns_in_order_and_empties():
+    flow = Flow(seed=1)
+    flow._emit(SoundEvent.NAV)
+    flow._emit(SoundEvent.CONFIRM)
+    assert flow.drain_sounds()[-2:] == [SoundEvent.NAV, SoundEvent.CONFIRM]
+    assert flow.drain_sounds() == []
