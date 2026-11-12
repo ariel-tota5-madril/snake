@@ -14,6 +14,7 @@ from snake.menu import EndMenu, MenuOption
 STEP_MS = 125  # 8 passos por segundo (001)
 UI_ANIM_MS = 300
 COUNTDOWN_MS = 3000
+PULSE_POP_DELAY_MS = 60  # pico do pulso do placar (002)
 GRID = 30  # grade 30x30 (FR-014); o padrão 20x20 do núcleo continua sendo o da 001
 
 
@@ -73,6 +74,7 @@ class Flow:
         self.phase_ms = 0.0
         self._step_elapsed = 0.0
         self._sounds: list[SoundEvent] = []
+        self._pop_in_ms: float | None = None
 
     # --- consultas ------------------------------------------------------------------------
 
@@ -154,6 +156,11 @@ class Flow:
         self.bursts = [b for b in self.bursts if not b.done]
         self.pulse.update(dt_ms)
         self.shake.update(dt_ms)
+        if self._pop_in_ms is not None:
+            self._pop_in_ms -= dt_ms
+            if self._pop_in_ms <= 0:
+                self._pop_in_ms = None
+                self._emit(SoundEvent.PULSE_POP)
 
     def _update_playing(self, dt_ms: float) -> None:
         self._step_elapsed += dt_ms
@@ -165,14 +172,19 @@ class Flow:
     def _step_once(self) -> None:
         score_before = self.game.score
         self.game.step()
+        if self.game.status is Status.RUNNING:
+            self._emit(SoundEvent.STEP)
         if self.game.score > score_before:
             self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
             self.pulse.trigger()
             self.shake.trigger(*EAT_SHAKE)
+            self._emit(SoundEvent.EAT)
+            self._pop_in_ms = PULSE_POP_DELAY_MS
 
     def _check_end(self) -> None:
         if self.game.status is Status.GAME_OVER:
             self.shake.trigger(*COLLISION_SHAKE)
+            self._emit(SoundEvent.CRASH)
             self._go(Phase.SHAKING)
         elif self.game.status is Status.WON:
             self._open_menu()

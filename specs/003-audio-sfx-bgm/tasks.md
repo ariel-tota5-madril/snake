@@ -62,14 +62,14 @@ todas as histórias
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Test in `tests/test_sounds.py`: `SFX` has `STEP`, `EAT`, `PULSE_POP` and `CRASH`; `STEP` has the lowest relative volume of all effects (FR-002) and lasts ≤ 30 ms; `EAT` rises in pitch; `CRASH` lasts about 350 ms
-- [ ] T009 [P] [US1] Test in `tests/test_flow.py`: each step emits `STEP`; eating emits `EAT` in the same update as the burst; `PULSE_POP` is emitted 60 ms of game time after `EAT` ("PULSE_POP_DELAY_MS = 60"); game over emits `CRASH` together with the shake; turning emits nothing
+- [X] T008 [P] [US1] Test in `tests/test_sounds.py`: `SFX` has `STEP`, `EAT`, `PULSE_POP` and `CRASH`; `STEP` has the lowest relative volume of all effects (FR-002) and lasts ≤ 30 ms; `EAT` rises in pitch; `CRASH` lasts about 350 ms
+- [X] T009 [P] [US1] Test in `tests/test_flow.py`: each step emits `STEP`; eating emits `EAT` in the same update as the burst; `PULSE_POP` is emitted 60 ms of game time after `EAT` ("PULSE_POP_DELAY_MS = 60"); game over emits `CRASH` together with the shake; turning emits nothing
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Define `STEP`, `EAT`, `PULSE_POP` and `CRASH` sounds with the relative volumes of research.md §5 in `src/snake/sounds.py`
-- [ ] T011 [US1] Emit `STEP`, `EAT`, scheduled `PULSE_POP` and `CRASH` from `src/snake/flow.py`
-- [ ] T012 [US1] Play effects in `src/snake/audio.py` at `relative volume × sfx/100`
+- [X] T010 [P] [US1] Define `STEP`, `EAT`, `PULSE_POP` and `CRASH` sounds with the relative volumes of research.md §5 in `src/snake/sounds.py`
+- [X] T011 [US1] Emit `STEP`, `EAT`, scheduled `PULSE_POP` and `CRASH` from `src/snake/flow.py`
+- [X] T012 [US1] Play effects in `src/snake/audio.py` at `relative volume × sfx/100`
 
 **Checkpoint**: `pytest` verde; a partida tem tique, coleta, pop e batida.
 

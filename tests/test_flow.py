@@ -392,3 +392,52 @@ def test_drain_sounds_returns_in_order_and_empties():
     flow._emit(SoundEvent.CONFIRM)
     assert flow.drain_sounds()[-2:] == [SoundEvent.NAV, SoundEvent.CONFIRM]
     assert flow.drain_sounds() == []
+
+
+# T009 — sons da jogabilidade
+def playing_and_drained(seed: int = 1) -> Flow:
+    flow = to_playing(Flow(seed=seed))
+    flow.drain_sounds()
+    return flow
+
+
+def test_each_step_emits_step():
+    flow = playing_and_drained()
+    flow.game.food = (0, 0)
+    flow.update(STEP_MS)
+    assert flow.drain_sounds() == [SoundEvent.STEP]
+    flow.update(STEP_MS - 1)
+    assert flow.drain_sounds() == []
+
+
+def test_eating_emits_eat_with_the_burst_then_pulse_pop_60ms_later():
+    flow = playing_and_drained()
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    sounds = flow.drain_sounds()
+    assert SoundEvent.EAT in sounds and len(flow.bursts) == 1
+    assert SoundEvent.PULSE_POP not in sounds
+    flow.game.food = (0, 0)
+    flow.update(59)
+    assert SoundEvent.PULSE_POP not in flow.drain_sounds()
+    flow.update(1)
+    assert SoundEvent.PULSE_POP in flow.drain_sounds()
+
+
+def test_game_over_emits_crash_with_the_shake():
+    flow = playing_and_drained()
+    flow.game.food = (0, 0)
+    events = []
+    while flow.phase is Phase.PLAYING:
+        flow.update(STEP_MS)
+        events += flow.drain_sounds()
+    assert flow.phase is Phase.SHAKING
+    assert SoundEvent.CRASH in events
+    assert SoundEvent.STEP not in events[events.index(SoundEvent.CRASH):]
+
+
+def test_turning_emits_nothing():
+    flow = playing_and_drained()
+    flow.direction(Direction.UP)
+    assert flow.drain_sounds() == []
