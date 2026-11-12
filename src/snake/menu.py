@@ -5,6 +5,7 @@ from enum import Enum
 
 class MenuOption(Enum):
     PLAY = "Jogar"
+    RANKING = "Ranking"  # 005/FR-010b
     OPTIONS = "Opções"
     CONTINUE = "Continuar"
     TITLE = "Tela inicial"
@@ -15,7 +16,7 @@ class MenuOption(Enum):
     BACK = "Voltar"
 
 
-TITLE_OPTIONS = (MenuOption.PLAY, MenuOption.OPTIONS, MenuOption.QUIT)  # 005/FR-010a
+TITLE_OPTIONS = (MenuOption.PLAY, MenuOption.RANKING, MenuOption.OPTIONS, MenuOption.QUIT)  # 005
 PAUSE_OPTIONS = (MenuOption.CONTINUE, MenuOption.OPTIONS, MenuOption.TITLE)
 END_OPTIONS = (MenuOption.PLAY_AGAIN, MenuOption.TITLE)  # 005/FR-010: opções do placar
 SETTINGS_OPTIONS = (MenuOption.MUSIC, MenuOption.SFX, MenuOption.BACK)

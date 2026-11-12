@@ -41,20 +41,14 @@ def test_rows_list_every_entry_at_its_line():
     assert board.outside is None
 
 
-def test_scroll_moves_one_line_within_limits():
-    board = finish(board_for([90, 80, 70, 60, 50, 40, 30, 20], 95))  # 9 linhas
+def test_scroll_moves_one_line_within_the_ten_positions():
+    board = finish(board_for([90, 80, 70], 95))  # o placar tem sempre 10 posições (sessão 2)
     board.view_top = 0
     assert board.scroll(-1) is False
     assert board.scroll(1) is True and board.view_top == 1
     for _ in range(10):
         board.scroll(1)
-    assert board.view_top == 9 - VISIBLE_ROWS
-    assert board.scroll(1) is False
-
-
-def test_short_table_does_not_scroll():
-    board = finish(board_for([30], 10))
-    assert board.view_top == 0
+    assert board.view_top == 10 - VISIBLE_ROWS
     assert board.scroll(1) is False
 
 
@@ -123,15 +117,75 @@ def run(board: Scoreboard, ms: float, dt: float = 10) -> list:
     return events
 
 
-def test_ignition_on_the_ground_with_jitter_flame_and_expelled_tenth():
+def test_ignition_below_the_tenth_with_jitter_and_flame():
     board = board_for(FULL, 55)  # entra na posição 5
     assert not board.done and board.phase is ScorePhase.IGNITION
+    assert board.view_top == 6  # a plataforma (linha 10) aparece na base da vista
     events = run(board, 100)
-    assert events[:2] == ["ignite", "hit"]  # o antigo 10º explode na ignição
-    assert board.rocket_y == 9.0  # chão da lista
+    assert events == ["ignite"]  # sessão 2: nada explode na ignição
+    assert board.rocket_y == 10.0  # fora das posições numeradas
     assert board.rocket_offset != (0, 0)
     assert board.bursts and all(b.tint == "flame" for b in board.bursts)
-    assert any(sh.to_y is None for sh in board.shatters)
+
+
+def run_until_hits(board: Scoreboard, hits: int) -> list:
+    events = []
+    while events.count("hit") < hits:
+        board.update(10)
+        events += board.drain_events()
+    return events
+
+
+def test_full_table_tenth_is_the_first_hit_and_falls_out():
+    board = board_for(FULL, 55)
+    run_until_hits(board, 1)
+    assert board.rocket_y <= 9.5
+    assert len(board.shatters) == 1
+    expelled = board.shatters[0]
+    assert expelled.to_y is None and expelled.entry.score == 10
+
+
+def test_empty_table_still_launches_through_all_ten_positions():
+    board = board_for([], 7)
+    assert board.rank == 0 and board.rocket_y == 10.0
+    events = run(board, 6000)
+    assert "launch" in events and "hit" not in events
+    assert "first" in events and board.done
+
+
+def test_entering_at_the_tenth_still_launches_one_line():
+    board = board_for(list(range(100, 10, -10)), 5)  # 9 nomes; entra na 10ª
+    assert board.rank == 9
+    events = run(board, 4000)
+    assert "launch" in events and "hit" not in events
+    assert board.rocket_y == 9.0
+
+
+def test_hit_names_turn_red_and_stay_red():
+    board = board_for([90, 80, 70, 60], 85)
+    run_until_hits(board, 2)  # passou por 60 e 70
+    run(board, 50)
+    flying = [sh.red for sh in board.shatters]
+    assert flying and all(0 < r <= 1 for r in flying)
+    run(board, 5000)
+    reds = {r.entry.score: r.red for r in board.rows()}
+    assert reds == {90: 0, 85: 0, 80: 1, 70: 1, 60: 1}
+
+
+def test_empty_slots_show_dashes_and_ignore_the_flying_name():
+    board = board_for([90, 80], 85)
+    assert board.empty_slots() == list(range(2, 10))  # antes de decolar
+    run(board, 6000)
+    assert board.empty_slots() == list(range(3, 10))
+
+
+def test_viewer_starts_at_the_top_without_animation():
+    hs_entries = [Entry(f"P{i}", 100 - i) for i in range(8)]
+    viewer = Scoreboard.viewer(hs_entries, random.Random(1))
+    assert viewer.done and viewer.view_top == 0
+    assert viewer.outside is None
+    assert all(not r.is_player and r.red == 0 for r in viewer.rows())
+    assert viewer.scroll(1) is True
 
 
 def test_launch_accelerates_to_max_speed_and_keeps_it():
@@ -149,7 +203,7 @@ def test_launch_accelerates_to_max_speed_and_keeps_it():
 def test_camera_follows_above_the_middle_then_stops_at_the_top():
     board = board_for(FULL, 105)
     view0 = board.view_top
-    assert view0 == 10 - VISIBLE_ROWS
+    assert view0 == 11 - VISIBLE_ROWS  # 10 posições + plataforma
     screen = []
     while board.phase in (ScorePhase.IGNITION, ScorePhase.CLIMB):
         board.update(10)
@@ -183,13 +237,6 @@ def test_not_first_has_no_first_place():
     events = run(board, 5000)
     assert "first" not in events and board.first_place == 0
     assert board.done
-
-
-def test_no_climb_when_entering_at_the_bottom():
-    board = board_for([90, 80], 10)
-    events = run(board, 3000)
-    assert "launch" not in events and "hit" not in events
-    assert events[0] == "ignite" and "land" in events
 
 
 def test_worst_case_animation_fits_in_five_seconds():

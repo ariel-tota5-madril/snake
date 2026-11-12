@@ -14,6 +14,7 @@ from snake.core import Direction, Status
 from snake.flow import RESUME_STEP_MS, STAMP_ANGLE_DEG, UI_ANIM_MS, Flow, Phase, SoundEvent
 from snake.juice import ease_out
 from snake.menu import Menu, MenuOption
+from snake.highscores import CAPACITY
 from snake.scoreboard import VISIBLE_ROWS
 
 CELL = 48  # grade 30x30 -> janela 1440x1440 (FR-014)
@@ -43,6 +44,8 @@ SLIDER_BG = (60, 64, 76)
 SPECIAL_COLORS = ((190, 90, 255), (255, 200, 40))  # 004: roxa ("FEEDING") e dourada ("FRENZY")
 TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1], "flame": (255, 150, 40)}
 FIRST_PLACE_COLOR = (255, 215, 60)
+RUN_OVER_RED = (255, 70, 70)  # quem o foguete atropelou (FR-013b)
+RANKING_UI = {Phase.RANKING_IN, Phase.RANKING, Phase.RANKING_OUT}
 GLOW_PERIOD_MS = 1200
 STAMP_WORDS = (("FEEDING", SPECIAL_COLORS[0]), ("FRENZY", (255, 225, 40)))  # roxo e amarelo
 STAMP_OUTLINE = (15, 10, 25)
@@ -142,7 +145,7 @@ def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
 
 def score_y(flow: Flow) -> float:
     """O placar fica escondido na tela inicial e entra deslizando de cima no começo da contagem."""
-    if flow.phase in TITLE_PHASES or flow.phase in NAME_UI or (flow.phase in OPTIONS_UI and flow.options_origin is Phase.TITLE):
+    if flow.phase in TITLE_PHASES or flow.phase in NAME_UI or flow.phase in RANKING_UI or (flow.phase in OPTIONS_UI and flow.options_origin is Phase.TITLE):
         return -30 * S
     if flow.phase is Phase.COUNTDOWN:
         return (-30 + 48 * ease_out(flow.phase_ms / UI_ANIM_MS)) * S
@@ -271,7 +274,7 @@ def menu_lines(menu: Menu) -> list[tuple[str, tuple]]:
 
 
 def draw_title(screen: pygame.Surface, big: pygame.font.Font, font: pygame.font.Font, flow: Flow) -> None:
-    panel = pygame.Surface((round(420 * S), round(240 * S)), pygame.SRCALPHA)  # 3 opções (005)
+    panel = pygame.Surface((round(420 * S), round(280 * S)), pygame.SRCALPHA)  # 4 opções (005)
     draw_text(panel, big, "Snake", SNAKE_HEAD, (210 * S, 45 * S))
     for i, (text, color) in enumerate(menu_lines(flow.title_menu)):
         draw_text(panel, font, text, color, (210 * S, (120 + i * 36) * S))
@@ -373,24 +376,34 @@ def draw_entry(panel, entry, color, y: float, offsets=None) -> None:
 
 
 def draw_scoreboard(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
-    """Placar vertical (005): 5 linhas visíveis com rolagem, resultado de fora e opções."""
-    board = flow.scoreboard
+    title = "Game Over" if flow.game.status is Status.GAME_OVER else "Você venceu!"
+    draw_board_panel(screen, font, flow.scoreboard, title, flow.menu, flow.ui_progress)
+
+
+def draw_ranking(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    draw_board_panel(screen, font, flow.ranking, "Ranking", None, flow.ui_progress)
+
+
+def draw_board_panel(screen, font, board, title: str, menu, progress: float) -> None:
+    """Placar vertical (005): 10 posições, 5 visíveis com rolagem, resultado de fora e opções."""
     width, height = round(BOARD_W * S), round(BOARD_H * S)
     panel = pygame.Surface((width, height), pygame.SRCALPHA)
     pygame.draw.rect(panel, BOARD_BG, panel.get_rect(), border_radius=round(10 * S))
-    title = "Game Over" if flow.game.status is Status.GAME_OVER else "Você venceu!"
     draw_text(panel, font, title, DIM, (width / 2, 24 * S))
     draw_text(panel, font_of(round(52 * S)), "HIGHSCORES", HIGHLIGHT, (width / 2, 62 * S))
     top, row_h = BOARD_TOP * S, ROW_H * S
     area = pygame.Rect(0, round(top), width, round(VISIBLE_ROWS * row_h))
     panel.set_clip(area)
     view = board.view_top
-    for i in range(len(board.after)):  # números das posições acompanham as linhas
+    for i in range(CAPACITY):  # as 10 posições, sempre (sessão 2); vazias como "---"
         draw_text(panel, font, f"{i + 1}.", DIM, (34 * S, top + (i - view + 0.5) * row_h))
+    for i in board.empty_slots():
+        draw_chars(panel, "---", DIM, NAME_X * S, top + (i - view + 0.5) * row_h)
     def line_y(y: float) -> float:
         return top + (y - view + 0.5) * row_h
 
-    rocket_x = NAME_X * S + sum(glyph(ch, HIGHLIGHT).get_width() for ch in board.player.name) / 2
+    name = board.player.name if board.player else ""
+    rocket_x = NAME_X * S + sum(glyph(ch, HIGHLIGHT).get_width() for ch in name) / 2
     for burst in board.bursts:  # chama do foguete, por baixo do nome
         for p in burst.particles:
             center = (rocket_x + p.x * row_h, line_y(p.y))
@@ -398,33 +411,35 @@ def draw_scoreboard(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) 
             color = blend(FLASH_YELLOW, TINTS["flame"], 1 - p.life)
             pygame.draw.circle(panel, color, center, radius)
     for row in board.rows():
-        color = HIGHLIGHT if row.is_player else TEXT
+        color = HIGHLIGHT if row.is_player else blend(TEXT, RUN_OVER_RED, row.red)
         offsets = None
         if row.is_player and board.rocket_offset != (0, 0):  # tremor da ignição
             n = len(row.entry.name) + len(str(row.entry.score))
             offsets = [board.rocket_offset] * n
         draw_entry(panel, row.entry, color, line_y(row.y), offsets)
     for shatter in board.shatters:  # nomes atingidos: letras voando (o expulso cai pela base)
-        draw_entry(panel, shatter.entry, TEXT, line_y(shatter.base_y), shatter.offsets())
+        draw_entry(panel, shatter.entry, blend(TEXT, RUN_OVER_RED, shatter.red), line_y(shatter.base_y), shatter.offsets())
     panel.set_clip(None)
     if view > 0.01:
         draw_arrow(panel, (width / 2, top - 10 * S), up=True)
-    if view < max(0, len(board.after) - VISIBLE_ROWS) - 0.01:
+    if view < CAPACITY - VISIBLE_ROWS - 0.01:
         draw_arrow(panel, (width / 2, area.bottom + 12 * S), up=False)
     if board.outside is not None:
         draw_text(panel, font, "Seu resultado", DIM, (width / 2, area.bottom + 40 * S))
         draw_entry(panel, board.outside, HIGHLIGHT, area.bottom + 74 * S)
-    if board.done:
-        small = font_of(round(28 * S))
-        for i, option in enumerate(flow.menu.options):  # lado a lado, escolhidas com ←/→
-            selected = option is flow.menu.selected
+    small = font_of(round(28 * S))
+    if menu is None:  # consulta do ranking
+        draw_text(panel, small, "Enter ou Esc: voltar", DIM, (width / 2, height - 44 * S))
+    elif board.done:
+        for i, option in enumerate(menu.options):  # lado a lado, escolhidas com ←/→
+            selected = option is menu.selected
             center = (width * (0.27 + 0.46 * i), height - 44 * S)
             draw_text(panel, small, option.value, HIGHLIGHT if selected else DIM, center)
             if selected:
                 bar = pygame.Rect(0, 0, round(120 * S), round(3 * S))
                 bar.center = (center[0], center[1] + 18 * S)
                 pygame.draw.rect(panel, HIGHLIGHT, bar)
-    draw_panel(screen, panel, flow.ui_progress)
+    draw_panel(screen, panel, progress)
 
 
 def draw_first_place(screen: pygame.Surface, flow: Flow) -> None:
@@ -465,6 +480,8 @@ def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font
         draw_title(screen, big, font, flow)
     elif flow.phase in NAME_UI:
         draw_name_entry(screen, font, flow)
+    elif flow.phase in RANKING_UI and flow.ranking is not None:
+        draw_ranking(screen, font, flow)
     elif flow.phase is Phase.COUNTDOWN:
         draw_countdown(screen, big, flow)
     elif flow.phase in MENU_PHASES and flow.menu is not None:

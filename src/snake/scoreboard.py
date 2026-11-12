@@ -28,6 +28,8 @@ FLAME_ANGLE = (math.pi / 2 - 0.5, math.pi / 2 + 0.5)  # para baixo
 SCATTER_MS, REFORM_MS = 300, 350
 FALL_MS, GRAVITY = 800, 12.0
 SHATTER_SPEED = (2.0, 6.0)
+RED_MS = 400  # transição para vermelho de quem foi atropelado (FR-013b)
+LAUNCH_Y = float(CAPACITY)  # plataforma: abaixo da 10ª posição, fora dos números (sessão 2)
 
 
 class ScorePhase(Enum):
@@ -43,6 +45,7 @@ class RowView:
     y: float  # linha (fracionária durante a animação)
     entry: Entry
     is_player: bool
+    red: float = 0.0  # 0 = cor normal, 1 = vermelho (foi atropelado)
 
 
 class Shatter:
@@ -81,6 +84,10 @@ class Shatter:
         return lerp(self.from_y, self.to_y, self._reform)
 
     @property
+    def red(self) -> float:
+        return min(1.0, self._t / RED_MS)
+
+    @property
     def alpha(self) -> float:
         if self.to_y is None:
             return max(0.0, 1 - self._t / FALL_MS)
@@ -97,7 +104,7 @@ class Scoreboard:
         before: list[Entry],
         after: list[Entry],
         rank: int | None,
-        player: Entry,
+        player: Entry | None,
         rng: random.Random,
     ) -> None:
         self.before = list(before)
@@ -105,19 +112,19 @@ class Scoreboard:
         self.rank = rank
         self.player = player
         self._rng = rng
-        self.outside = player if rank is None else None
+        self.outside = player if rank is None and player is not None else None
         self.shatters: list[Shatter] = []
         self.bursts: list[ParticleBurst] = []
         self.rocket_offset: tuple[float, float] = (0.0, 0.0)
         self.first_place = 0.0
         self._events: list[str] = []
-        self._hit: set[int] = set()  # linhas antigas já atingidas
+        self._hit: dict[int, float] = {}  # linha antiga atingida -> ms desde o impacto
         self._shatter_of: dict[int, Shatter] = {}
         self._t = 0.0  # tempo na etapa atual
         self._flame_ms = 0.0
         self._started = False
-        self._y0 = len(self.after) - 1  # chão da lista
-        self.view_top = float(self._max_top)
+        self._y0 = LAUNCH_Y  # o foguete sempre decola de baixo da 10ª posição
+        self.view_top = float(self._max_top if rank is None else self._anim_top)
         if rank is None:
             self.phase = ScorePhase.DONE
             self.rocket_y: float | None = None
@@ -131,9 +138,22 @@ class Scoreboard:
     def done(self) -> bool:
         return self.phase is ScorePhase.DONE
 
+    @classmethod
+    def viewer(cls, entries: list[Entry], rng: random.Random) -> "Scoreboard":
+        """Consulta do ranking pela tela inicial: sem animação, do 1º lugar (FR-010b)."""
+        board = cls(entries, entries, None, None, rng)
+        board.view_top = 0.0
+        return board
+
     @property
     def _max_top(self) -> int:
-        return max(0, len(self.after) - VISIBLE_ROWS)
+        """Rolagem manual: as 10 posições sempre existem (vazias como "---")."""
+        return CAPACITY - VISIBLE_ROWS
+
+    @property
+    def _anim_top(self) -> int:
+        """Durante a animação a plataforma (linha 10) também precisa caber na vista."""
+        return CAPACITY + 1 - VISIBLE_ROWS
 
     @property
     def _distance(self) -> float:
@@ -151,10 +171,29 @@ class Scoreboard:
                 if old not in self._hit:
                     rows.append(RowView(float(old), entry, False))
                 elif old not in self._shatter_of or self._shatter_of[old].done:
-                    rows.append(RowView(float(i), entry, False))
+                    red = min(1.0, self._hit[old] / RED_MS)
+                    rows.append(RowView(float(i), entry, False, red))
                 continue
             rows.append(RowView(float(i), entry, False))
         return rows
+
+    def empty_slots(self) -> list[int]:
+        """Posições 0–9 sem ninguém parado nelas nem letras chegando: desenhadas como "---"."""
+        occupied = {
+            int(r.y)
+            for r in self.rows()
+            if float(r.y).is_integer() and (not r.is_player or self.done)
+        }
+        for sh in self.shatters:
+            occupied.add(int(sh.from_y))
+            if sh.to_y is not None:
+                occupied.add(int(sh.to_y))
+        flying = self.rocket_y if self.rocket_y is not None and not self.done else None
+        return [
+            i
+            for i in range(CAPACITY)
+            if i not in occupied and (flying is None or abs(flying - i) >= 0.6)  # sem "---" sob o nome em voo
+        ]
 
     def drain_events(self) -> list[str]:
         events, self._events = self._events, []
@@ -169,6 +208,8 @@ class Scoreboard:
         for burst in self.bursts:
             burst.update(dt_ms)
         self.bursts = [b for b in self.bursts if not b.done]
+        for old in self._hit:
+            self._hit[old] += dt_ms
         if self.done:
             return
         if not self._started:
@@ -196,19 +237,13 @@ class Scoreboard:
     def _start(self) -> None:
         self._started = True
         self._events.append("ignite")
-        if len(self.before) >= CAPACITY:  # placar cheio: o antigo 10º explode e cai (FR-013a)
-            self._events.append("hit")
-            self.shatters.append(Shatter(self.before[-1], float(self._y0), None, self._rng))
 
     def _ignition(self) -> None:
         self.rocket_offset = (self._rng.uniform(-JITTER, JITTER), self._rng.uniform(-JITTER, JITTER))
         if self._t >= IGNITION_MS:
             self.rocket_offset = (0.0, 0.0)
-            if self._distance > 0:
-                self._events.append("launch")
-                self._enter(ScorePhase.CLIMB)
-            else:
-                self._land()
+            self._events.append("launch")  # a distância é sempre >= 1 linha
+            self._enter(ScorePhase.CLIMB)
 
     def _climb(self) -> None:
         t = self._t / 1000
@@ -217,11 +252,13 @@ class Scoreboard:
         travelled = min(travelled, self._distance)
         self.rocket_y = self._y0 - travelled
         self.view_top = self._camera(self.rocket_y)
-        for old in range(self._y0 - 1, self.rank - 1, -1):  # bate nos nomes que passou
-            if old not in self._hit and self.rocket_y <= old + 0.5:
-                self._hit.add(old)
+        for old in range(min(len(self.before), CAPACITY) - 1, self.rank - 1, -1):
+            if old not in self._hit and self.rocket_y <= old + 0.5:  # atropela quem está no caminho
+                self._hit[old] = 0.0
                 self._events.append("hit")
-                shatter = Shatter(self.before[old], float(old), float(old + 1), self._rng)
+                expelled = old == CAPACITY - 1  # placar cheio: o antigo 10º cai para fora
+                to_y = None if expelled else float(old + 1)
+                shatter = Shatter(self.before[old], float(old), to_y, self._rng)
                 self._shatter_of[old] = shatter
                 self.shatters.append(shatter)
         if travelled >= self._distance:
@@ -229,7 +266,7 @@ class Scoreboard:
 
     def _camera(self, y: float) -> float:
         """A lista desce para manter o foguete em FOLLOW_AT; para quando o 1º lugar cabe na tela."""
-        return min(max(min(float(self._max_top), y - FOLLOW_AT), 0.0), float(self._max_top))
+        return min(max(min(float(self._anim_top), y - FOLLOW_AT), 0.0), float(self._anim_top))
 
     def _land(self) -> None:
         self.rocket_y = float(self.rank)
@@ -255,6 +292,8 @@ class Scoreboard:
     def _enter(self, phase: ScorePhase) -> None:
         self.phase = phase
         self._t = 0.0
+        if phase is ScorePhase.DONE:  # vista numa linha inteira, dentro das 10 posições
+            self.view_top = float(min(round(self.view_top), self._max_top))
 
     # --- entradas -------------------------------------------------------------------------
 
@@ -265,7 +304,7 @@ class Scoreboard:
         self._started = True
         self.rocket_y = float(self.rank)
         self.view_top = self._camera(float(self.rank))
-        self._hit = set(range(self.rank, self._y0))
+        self._hit = {old: float(RED_MS) for old in range(self.rank, min(len(self.before), CAPACITY))}
         self._shatter_of = {}
         self.shatters = []
         self.bursts = []

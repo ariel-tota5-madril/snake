@@ -510,6 +510,9 @@ def make_flow(tmp_path=None, **kwargs) -> Flow:
     return Flow(seed=1, settings_path=path, **kwargs)
 
 
+TITLE_OPTIONS_STEPS = 2  # tela inicial: Jogar / Ranking / Opções / Sair (005)
+
+
 def open_options_from(flow: Flow, steps_down: int) -> None:
     for _ in range(steps_down):
         flow.direction(Direction.DOWN)
@@ -543,12 +546,14 @@ def test_title_shows_play_and_options_menu():
     assert flow.title_menu.options[0] is MenuOption.PLAY
     assert flow.title_menu.selected is MenuOption.PLAY
     flow.direction(Direction.DOWN)
+    assert flow.title_menu.selected is MenuOption.RANKING  # 005
+    flow.direction(Direction.DOWN)
     assert flow.title_menu.selected is MenuOption.OPTIONS
 
 
 def test_options_from_title_changes_volume_saves_and_returns(tmp_path):
     flow = to_title(make_flow(tmp_path))
-    open_options_from(flow, 1)
+    open_options_from(flow, TITLE_OPTIONS_STEPS)
     assert flow.options_menu.selected is MenuOption.MUSIC
     flow.direction(Direction.RIGHT)
     assert flow.settings.music == 70
@@ -569,7 +574,7 @@ def test_flow_loads_saved_volumes(tmp_path):
 
 def test_options_back_item_returns_to_origin():
     flow = to_title(Flow(seed=1))
-    open_options_from(flow, 1)
+    open_options_from(flow, TITLE_OPTIONS_STEPS)
     leave_options(flow, via_escape=False)
     assert flow.phase is Phase.TITLE
 
@@ -729,8 +734,9 @@ def test_nav_only_when_selection_changes():
     flow.direction(Direction.DOWN)
     assert flow.drain_sounds() == [SoundEvent.NAV]
     flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)
     flow.drain_sounds()
-    flow.direction(Direction.DOWN)  # já está na última (005: Jogar / Opções / Sair)
+    flow.direction(Direction.DOWN)  # já está na última (005: Jogar / Ranking / Opções / Sair)
     assert flow.drain_sounds() == []
 
 
@@ -747,7 +753,7 @@ def test_confirm_sound_on_accepted_confirmations():
 
 def test_volume_sliders_sound_only_when_value_changes():
     flow = to_title(Flow(seed=1, settings=AudioSettings(music=100, sfx=80)))
-    open_options_from(flow, 1)
+    open_options_from(flow, TITLE_OPTIONS_STEPS)
     flow.drain_sounds()
     flow.direction(Direction.RIGHT)  # música já em 100%
     assert flow.drain_sounds() == []
@@ -1294,6 +1300,7 @@ def test_quit_on_title_closes_the_game():
     flow = to_title(Flow(seed=1))
     flow.drain_sounds()
     flow.direction(Direction.DOWN)
+    flow.direction(Direction.DOWN)
     flow.direction(Direction.DOWN)  # Sair
     flow.drain_sounds()
     flow.confirm()
@@ -1420,3 +1427,42 @@ def test_rocket_events_become_sound_events():
     assert events[0] is SoundEvent.ROCKET_IGNITE
     assert SoundEvent.ROCKET_LAND in events
     assert events.index(SoundEvent.ROCKET_LAND) < events.index(SoundEvent.FIRST_PLACE)
+
+
+
+# --- 005 sessão 2: ranking pela tela inicial (FR-010b) -----------------------------------
+
+
+def open_ranking(tmp_path) -> Flow:
+    path = tmp_path / "hs.json"
+    Highscores([Entry(f"P{i}", 100 - i) for i in range(8)]).save(path)
+    flow = to_title(Flow(seed=1, highscores_path=path))
+    flow.direction(Direction.DOWN)  # Ranking
+    flow.drain_sounds()
+    flow.confirm()
+    assert SoundEvent.CONFIRM in flow.drain_sounds()
+    assert flow.phase is Phase.RANKING_IN
+    flow.update(UI_ANIM_MS)
+    assert flow.phase is Phase.RANKING
+    return flow
+
+
+def test_ranking_opens_at_the_top_and_scrolls(tmp_path):
+    flow = open_ranking(tmp_path)
+    assert flow.ranking.view_top == 0 and flow.ranking.done
+    flow.direction(Direction.DOWN)
+    assert flow.ranking.view_top == 1
+    assert flow.drain_sounds() == [SoundEvent.NAV]
+    flow.direction(Direction.LEFT)  # sem opções laterais: nada acontece
+    assert flow.drain_sounds() == []
+
+
+def test_ranking_enter_or_escape_returns_to_title_keeping_the_music(tmp_path):
+    for leave in ("confirm", "escape"):
+        flow = open_ranking(tmp_path)
+        getattr(flow, leave)()
+        assert flow.phase is Phase.RANKING_OUT
+        flow.update(UI_ANIM_MS)
+        assert flow.phase is Phase.TITLE
+        assert SoundEvent.MUSIC_TITLE not in flow.drain_sounds()
+        assert flow.ranking is None

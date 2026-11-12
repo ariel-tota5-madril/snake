@@ -24,7 +24,7 @@ pytest
 python -m snake
 ```
 
-Fluxo de telas: **tela inicial** ("Jogar" / "Opções" / "Sair") → **seu nome** → **contagem
+Fluxo de telas: **tela inicial** ("Jogar" / "Ranking" / "Opções" / "Sair") → **seu nome** → **contagem
 3, 2, 1** → **partida** → ao bater, a tela treme → **placar de highscore** ("Jogar de novo" /
 "Tela inicial").
 
@@ -55,8 +55,10 @@ mesmo tamanho. O tempo acabou: fim de jogo.
 
 Ao fim de cada partida aparece o placar com as **10 melhores** pontuações (nome até 10
 caracteres), salvo em `~/.config/snake/highscores.json`. Se você entra no placar, seu nome vira um
-foguete: treme, decola, explode os nomes que ultrapassa (eles se remontam uma linha abaixo) e
-pousa na posição nova — "1ST PLACE!" no 1º lugar. Enter pula a animação. Arquivo ausente ou
+foguete: sempre decola de baixo da 10ª posição, sobe atropelando quem está no caminho (os nomes
+explodem, se remontam uma linha abaixo e ficam vermelhos; num placar cheio, o antigo 10º cai para
+fora) e pousa na posição nova — "1ST PLACE!" no 1º lugar. "Ranking", na tela inicial, mostra o
+placar só para consulta. Enter pula a animação. Arquivo ausente ou
 inválido: o jogo abre com o placar vazio.
 
 ## Áudio

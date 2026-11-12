@@ -115,6 +115,9 @@ class Phase(Enum):
     NAME_IN = "name_in"  # 005: entrada do nome do jogador
     NAME = "name"
     NAME_OUT = "name_out"
+    RANKING_IN = "ranking_in"  # 005: consulta do placar pela tela inicial
+    RANKING = "ranking"
+    RANKING_OUT = "ranking_out"
 
 
 SCOREBOARD_SOUNDS = {  # eventos da animação do placar -> sons (005)
@@ -124,9 +127,10 @@ SCOREBOARD_SOUNDS = {  # eventos da animação do placar -> sons (005)
     "land": SoundEvent.ROCKET_LAND,
     "first": SoundEvent.FIRST_PLACE,
 }
-ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.NAME_IN}
-LEAVING = {Phase.TITLE_OUT, Phase.MENU_OUT, Phase.PAUSE_OUT, Phase.OPTIONS_OUT, Phase.NAME_OUT}
+ENTERING = {Phase.TITLE_IN, Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.NAME_IN, Phase.RANKING_IN}
+LEAVING = {Phase.TITLE_OUT, Phase.MENU_OUT, Phase.PAUSE_OUT, Phase.OPTIONS_OUT, Phase.NAME_OUT, Phase.RANKING_OUT}
 ENTRANCE_DONE = {
+    Phase.RANKING_IN: Phase.RANKING,
     Phase.NAME_IN: Phase.NAME,
     Phase.TITLE_IN: Phase.TITLE,
     Phase.MENU_IN: Phase.MENU,
@@ -180,6 +184,7 @@ class Flow:
         self.highscores_path = highscores_path
         self.highscores = Highscores.load(highscores_path) if highscores_path else Highscores()
         self.scoreboard: Scoreboard | None = None
+        self.ranking: Scoreboard | None = None  # consulta pela tela inicial (FR-010b)
         self._end_choice = MenuOption.PLAY_AGAIN
         self._enter_title()
 
@@ -282,8 +287,13 @@ class Flow:
         if self.phase is Phase.PLAYING:
             self.game.turn(direction)
             return
-        if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN):
+        if self.phase in (Phase.MENU_IN, Phase.PAUSE_IN, Phase.OPTIONS_IN, Phase.RANKING_IN):
             self._go(ENTRANCE_DONE[self.phase])  # tecla do menu conclui a entrada (FR-009 da 002)
+        if self.phase is Phase.RANKING:
+            if direction in (Direction.UP, Direction.DOWN):
+                if self.ranking.scroll(-1 if direction is Direction.UP else 1):
+                    self._emit(SoundEvent.NAV)
+            return
         if self.phase is Phase.MENU:
             self._scoreboard_direction(direction)
             return
@@ -321,6 +331,10 @@ class Flow:
                 self._emit(SoundEvent.CONFIRM)
                 self._go(Phase.NAME_OUT)
             return
+        if self.phase in (Phase.RANKING_IN, Phase.RANKING):
+            self._emit(SoundEvent.CONFIRM)
+            self._go(Phase.RANKING_OUT)
+            return
         if self.phase is Phase.MENU:
             if not self.scoreboard.done:
                 self.scoreboard.skip()  # Enter pula a animação (005/FR-015)
@@ -336,6 +350,9 @@ class Flow:
             choice = self.title_menu.confirm()
             if choice is MenuOption.PLAY:
                 self._go(Phase.TITLE_OUT)
+            elif choice is MenuOption.RANKING:
+                self.ranking = Scoreboard.viewer(self.highscores.entries, self._fx_rng)
+                self._go(Phase.RANKING_IN)
             elif choice is MenuOption.QUIT:
                 self.quit_requested = True
             else:
@@ -350,7 +367,9 @@ class Flow:
             self._leave_options()
 
     def escape(self) -> None:
-        if self.phase in (Phase.MENU_IN, Phase.MENU):
+        if self.phase in (Phase.RANKING_IN, Phase.RANKING):
+            self._go(Phase.RANKING_OUT)
+        elif self.phase in (Phase.MENU_IN, Phase.MENU):
             self._leave_scoreboard(MenuOption.TITLE)  # Esc no placar = "Tela inicial"
         elif self.phase in (Phase.NAME_IN, Phase.NAME):
             self.name_entry = None
@@ -379,6 +398,9 @@ class Flow:
         elif self.phase is Phase.TITLE_OUT and self.phase_ms >= UI_ANIM_MS:
             self.name_entry = NameEntry(self.player_name or "")  # 005: pede o nome
             self._go(Phase.NAME_IN)
+        elif self.phase is Phase.RANKING_OUT and self.phase_ms >= UI_ANIM_MS:
+            self.ranking = None
+            self._go(Phase.TITLE)  # a música da tela inicial continua
         elif self.phase is Phase.NAME_OUT and self.phase_ms >= UI_ANIM_MS:
             self.name_entry = None
             self._go(Phase.COUNTDOWN)

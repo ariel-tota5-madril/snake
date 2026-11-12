@@ -12,7 +12,7 @@ from snake.menu import (
 
 # T019
 def test_option_sets():
-    assert TITLE_OPTIONS == (MenuOption.PLAY, MenuOption.OPTIONS, MenuOption.QUIT)  # 005
+    assert TITLE_OPTIONS == (MenuOption.PLAY, MenuOption.RANKING, MenuOption.OPTIONS, MenuOption.QUIT)  # 005
     assert MenuOption.QUIT.value == "Sair"
     assert PAUSE_OPTIONS == (MenuOption.CONTINUE, MenuOption.OPTIONS, MenuOption.TITLE)
     assert END_OPTIONS == (MenuOption.PLAY_AGAIN, MenuOption.TITLE)  # 005/FR-010
@@ -39,7 +39,7 @@ def test_confirm_returns_selected_option():
     menu = Menu(TITLE_OPTIONS)
     assert menu.confirm() is MenuOption.PLAY
     menu.move_down()
-    assert menu.confirm() is MenuOption.OPTIONS
+    assert menu.confirm() is MenuOption.RANKING  # 005
 
 
 # 005 / T005 — entrada de nome (FR-002, FR-003)
