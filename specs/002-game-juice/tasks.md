@@ -26,8 +26,8 @@ e falhar antes da implementação correspondente. Os testes da 001 DEVEM continu
 
 **Purpose**: Módulos novos e a guarda de pureza
 
-- [ ] T001 [P] Create `src/snake/juice.py` and `src/snake/flow.py` with module docstrings only
-- [ ] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.juice` and `snake.flow` import no `pygame`, `time` or `datetime`
+- [X] T001 [P] Create `src/snake/juice.py` and `src/snake/flow.py` with module docstrings only
+- [X] T002 [P] Extend `tests/test_core_purity.py` to assert `snake.juice` and `snake.flow` import no `pygame`, `time` or `datetime`
 
 **Checkpoint**: `pytest` verde; o jogo continua igual ao da 001.
 
@@ -40,11 +40,11 @@ o comportamento da 001. Todas as histórias dependem dele.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Write failing tests in `tests/test_flow.py`: in `PLAYING`, `update(dt)` calls `game.step()` once per `STEP_MS = 125` accumulated (nothing before 125 ms); `direction(d)` turns the snake; `confirm()` is ignored while playing (FR-016 da 001)
-- [ ] T004 Write failing tests in `tests/test_flow.py`: on `GAME_OVER` or `WON` the flow enters `MENU` with an `EndMenu`; ↑/↓ via `direction()` move the selection; confirm `RESTART` restarts the game and returns to `PLAYING`; confirm `QUIT` and `quit()` (any phase) set `quit_requested`
-- [ ] T005 Write failing test in `tests/test_flow.py`: `Flow(seed=s)` produces the same food sequence as a bare `Game(seed=s)` given the same commands (SC-005)
-- [ ] T006 Implement `Phase` enum (all phases from data-model.md), constants (`STEP_MS`, `UI_ANIM_MS`, `COUNTDOWN_MS`, `PULSE_MS`, `SHAKE_MS`, `PARTICLE_LIFE_MS`) and `Flow(seed, width, height)` in `src/snake/flow.py`, temporarily starting in `PLAYING`, with `direction`, `confirm`, `quit`, `update` covering `PLAYING` and `MENU`, until T003–T005 pass
-- [ ] T007 Rewrite `src/snake/app.py` to drive a `Flow`: arrows → `direction()`, Espaço/Enter → `confirm()`, window close → `quit()`, clock `dt` → `update()`, draw board/score/menu from the flow; close when `quit_requested`
+- [X] T003 Write failing tests in `tests/test_flow.py`: in `PLAYING`, `update(dt)` calls `game.step()` once per `STEP_MS = 125` accumulated (nothing before 125 ms); `direction(d)` turns the snake; `confirm()` is ignored while playing (FR-016 da 001)
+- [X] T004 Write failing tests in `tests/test_flow.py`: on `GAME_OVER` or `WON` the flow enters `MENU` with an `EndMenu`; ↑/↓ via `direction()` move the selection; confirm `RESTART` restarts the game and returns to `PLAYING`; confirm `QUIT` and `quit()` (any phase) set `quit_requested`
+- [X] T005 Write failing test in `tests/test_flow.py`: `Flow(seed=s)` produces the same food sequence as a bare `Game(seed=s)` given the same commands (SC-005)
+- [X] T006 Implement `Phase` enum (all phases from data-model.md), constants (`STEP_MS`, `UI_ANIM_MS`, `COUNTDOWN_MS`, `PULSE_MS`, `SHAKE_MS`, `PARTICLE_LIFE_MS`) and `Flow(seed, width, height)` in `src/snake/flow.py`, temporarily starting in `PLAYING`, with `direction`, `confirm`, `quit`, `update` covering `PLAYING` and `MENU`, until T003–T005 pass
+- [X] T007 Rewrite `src/snake/app.py` to drive a `Flow`: arrows → `direction()`, Espaço/Enter → `confirm()`, window close → `quit()`, clock `dt` → `update()`, draw board/score/menu from the flow; close when `quit_requested`
 
 **Checkpoint**: `pytest` verde (001 + novos) e o jogo se comporta exatamente como na 001.
 

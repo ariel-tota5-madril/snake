@@ -1,15 +1,15 @@
-"""Adaptador Pygame: traduz teclado em comandos, o relógio em passos e desenha o estado.
+"""Adaptador Pygame: traduz teclado em entradas do Flow, mede o tempo e desenha o estado.
 
-Nenhuma regra de jogo vive aqui (Princípio I da constituição).
+Nenhuma regra de jogo nem regra de tela vive aqui (Princípio I da constituição).
 """
 
 import pygame
 
-from snake.core import Direction, Game, Status
-from snake.menu import EndMenu, MenuOption
+from snake.core import Direction, Status
+from snake.flow import Flow
+from snake.menu import EndMenu
 
 CELL = 24
-STEPS_PER_SECOND = 8
 FPS = 60
 BACKGROUND = (20, 24, 32)
 SNAKE_HEAD = (120, 220, 120)
@@ -34,21 +34,8 @@ def draw_text(screen: pygame.Surface, font: pygame.font.Font, text: str, color, 
     screen.blit(label, label.get_rect(center=center))
 
 
-def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, game: Game, menu: EndMenu) -> None:
-    shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-    shade.fill(OVERLAY)
-    screen.blit(shade, (0, 0))
-    cx, cy = screen.get_rect().center
-    title = "Game Over" if game.status is Status.GAME_OVER else "Você venceu!"
-    draw_text(screen, font, title, TEXT, (cx, cy - 70))
-    draw_text(screen, font, f"Pontuação final: {game.score}", TEXT, (cx, cy - 35))
-    for i, option in enumerate(menu.options):
-        selected = option is menu.selected
-        label = f"> {option.value} <" if selected else option.value
-        draw_text(screen, font, label, HIGHLIGHT if selected else DIM, (cx, cy + 15 + i * 36))
-
-
-def draw(screen: pygame.Surface, font: pygame.font.Font, game: Game, menu: EndMenu | None) -> None:
+def draw_board(screen: pygame.Surface, flow: Flow) -> None:
+    game = flow.game
     screen.fill(BACKGROUND)
     if game.food is not None:
         fx, fy = game.food
@@ -56,53 +43,55 @@ def draw(screen: pygame.Surface, font: pygame.font.Font, game: Game, menu: EndMe
     for i, (x, y) in enumerate(game.snake):
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
         pygame.draw.rect(screen, color, (x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2))
-    score = font.render(f"Pontos: {game.score}", True, TEXT)
+
+
+def draw_score(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    score = font.render(f"Pontos: {flow.game.score}", True, TEXT)
     screen.blit(score, (8, 6))
-    if menu is not None:
-        draw_end_menu(screen, font, game, menu)
+
+
+def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow, menu: EndMenu) -> None:
+    shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    shade.fill(OVERLAY)
+    screen.blit(shade, (0, 0))
+    cx, cy = screen.get_rect().center
+    title = "Game Over" if flow.game.status is Status.GAME_OVER else "Você venceu!"
+    draw_text(screen, font, title, TEXT, (cx, cy - 70))
+    draw_text(screen, font, f"Pontuação final: {flow.game.score}", TEXT, (cx, cy - 35))
+    for i, option in enumerate(menu.options):
+        selected = option is menu.selected
+        label = f"> {option.value} <" if selected else option.value
+        draw_text(screen, font, label, HIGHLIGHT if selected else DIM, (cx, cy + 15 + i * 36))
+
+
+def draw(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
+    draw_board(screen, flow)
+    draw_score(screen, font, flow)
+    if flow.menu is not None:
+        draw_end_menu(screen, font, flow, flow.menu)
     pygame.display.flip()
+
+
+def handle_event(flow: Flow, event: pygame.event.Event) -> None:
+    if event.type == pygame.QUIT:
+        flow.quit()
+    elif event.type == pygame.KEYDOWN:
+        if event.key in KEYS:
+            flow.direction(KEYS[event.key])
+        elif event.key in CONFIRM_KEYS:
+            flow.confirm()
 
 
 def run() -> None:
     pygame.init()
-    game = Game()
-    screen = pygame.display.set_mode((game.width * CELL, game.height * CELL))
+    flow = Flow()
+    screen = pygame.display.set_mode((flow.game.width * CELL, flow.game.height * CELL))
     pygame.display.set_caption("Snake")
     font = pygame.font.Font(None, 36)
     clock = pygame.time.Clock()
-    step_interval = 1000 / STEPS_PER_SECOND
-    elapsed = 0.0
-    menu: EndMenu | None = None
-    running = True
-    while running:
+    while not flow.quit_requested:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type != pygame.KEYDOWN:
-                continue
-            elif menu is None:
-                if event.key in KEYS:
-                    game.turn(KEYS[event.key])
-                # Espaço/Enter durante a partida não fazem nada (FR-016)
-            elif event.key == pygame.K_UP:
-                menu.move_up()
-            elif event.key == pygame.K_DOWN:
-                menu.move_down()
-            elif event.key in CONFIRM_KEYS:
-                if menu.confirm() is MenuOption.RESTART:
-                    game.restart()
-                    menu = None
-                    elapsed = 0.0
-                else:
-                    running = False
-        if menu is None:
-            elapsed += clock.tick(FPS)
-            while elapsed >= step_interval and game.status is Status.RUNNING:
-                game.step()
-                elapsed -= step_interval
-            if game.status is not Status.RUNNING:
-                menu = EndMenu()
-        else:
-            clock.tick(FPS)
-        draw(screen, font, game, menu)
+            handle_event(flow, event)
+        flow.update(clock.tick(FPS))
+        draw(screen, font, flow)
     pygame.quit()
