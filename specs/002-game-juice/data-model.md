@@ -1,6 +1,7 @@
 # Data Model: Game juice
 
-Tempos em milissegundos. Posições de efeitos em pixels; origem das partículas = centro da casa.
+Tempos em milissegundos. Posições das partículas em **casas da grade** (o adaptador converte
+para pixels); origem = casa da cabeça. Offsets do tremor em pixels.
 
 ## Constantes
 
@@ -19,8 +20,8 @@ Tempos em milissegundos. Posições de efeitos em pixels; origem das partículas
 
 | Campo | Regra |
 |-------|-------|
-| `x`, `y` | posição atual em px, começa no centro da casa da cabeça |
-| `vx`, `vy` | velocidade em px/s, de ângulo e módulo sorteados no RNG dos efeitos |
+| `x`, `y` | posição atual em casas, começa na casa da cabeça (o adaptador desenha no centro da casa) |
+| `vx`, `vy` | velocidade em casas/s (2,5 a 7,5), de ângulo e módulo sorteados no RNG dos efeitos |
 | `age_ms` | começa em 0; partícula morre quando `age_ms ≥ PARTICLE_LIFE_MS` |
 | `life` (derivado) | `1 − age_ms / PARTICLE_LIFE_MS`, usado para alfa e tamanho |
 

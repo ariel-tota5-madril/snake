@@ -11,6 +11,8 @@ Nenhum tipo do Pygame. Todo tempo entra por `update(dt_ms)`; toda aleatoriedade 
 
 ## `ParticleBurst(origin: tuple[float, float], rng: random.Random)`
 
+`origin` e as posições estão em casas da grade.
+
 | Membro | Efeito |
 |--------|--------|
 | `particles` | lista de partículas vivas (`x`, `y`, `life` em [0, 1]) |

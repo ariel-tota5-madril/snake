@@ -30,9 +30,10 @@ Não havia itens NEEDS CLARIFICATION no Technical Context. Decisões técnicas:
 
 ## 4. Partículas
 
-- **Decision**: 16 partículas por explosão, ângulo uniforme e velocidade entre 60 e 180 px/s
-  sorteados no RNG dos efeitos; vida de 600 ms; alfa e tamanho decaem linearmente; a explosão
-  termina quando todas morrem. Posição em pixels relativa ao centro da casa de origem.
+- **Decision**: 16 partículas por explosão, ângulo uniforme e velocidade entre 2,5 e 7,5 casas/s
+  (60–180 px/s com casas de 24 px) sorteados no RNG dos efeitos; vida de 600 ms; alfa e tamanho
+  decaem linearmente; a explosão termina quando todas morrem. Posição em casas da grade (o
+  `Flow` não conhece pixels); o adaptador converte. *Ajustado na implementação: antes era px.*
 - **Rationale**: atende FR-001 (≤ 0,6 s) e cabe com folga em 60 fps com 3 explosões (48
   partículas).
 

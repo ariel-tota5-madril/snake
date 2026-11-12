@@ -7,14 +7,12 @@ import random
 from enum import Enum
 
 from snake.core import Direction, Game, Status
+from snake.juice import ParticleBurst, ScorePulse
 from snake.menu import EndMenu, MenuOption
 
 STEP_MS = 125  # 8 passos por segundo (001)
 UI_ANIM_MS = 300
 COUNTDOWN_MS = 3000
-PULSE_MS = 300
-SHAKE_MS = 400
-PARTICLE_LIFE_MS = 600
 
 
 class Phase(Enum):
@@ -32,6 +30,10 @@ class Phase(Enum):
 class Flow:
     def __init__(self, seed: int | None = None, width: int = 20, height: int = 20) -> None:
         self.game = Game(width=width, height=height, rng=random.Random(seed))
+        # RNG separado: efeitos não consomem números do jogo (SC-005), mas seguem a seed (FR-011)
+        self._fx_rng = random.Random(f"juice-{seed}")
+        self.bursts: list[ParticleBurst] = []
+        self.pulse = ScorePulse()
         self.menu: EndMenu | None = None
         self.quit_requested = False
         self.phase = Phase.PLAYING
@@ -65,14 +67,25 @@ class Flow:
 
     def update(self, dt_ms: float) -> None:
         self.phase_ms += dt_ms
+        self._update_effects(dt_ms)
         if self.phase is Phase.PLAYING:
             self._update_playing(dt_ms)
+
+    def _update_effects(self, dt_ms: float) -> None:
+        for burst in self.bursts:
+            burst.update(dt_ms)
+        self.bursts = [b for b in self.bursts if not b.done]
+        self.pulse.update(dt_ms)
 
     def _update_playing(self, dt_ms: float) -> None:
         self._step_elapsed += dt_ms
         while self._step_elapsed >= STEP_MS and self.game.status is Status.RUNNING:
             self._step_elapsed -= STEP_MS
+            score_before = self.game.score
             self.game.step()
+            if self.game.score > score_before:
+                self.bursts.append(ParticleBurst(self.game.snake[0], self._fx_rng))
+                self.pulse.trigger()
         if self.game.status is not Status.RUNNING:
             self.menu = EndMenu()
             self._go(Phase.MENU)

@@ -130,3 +130,36 @@ def test_flow_keeps_the_same_food_sequence_as_a_bare_game():
         flow.update(STEP_MS)
 
     assert foods_of(flow_step, flow.game) == foods_of(bare_step, bare)
+
+
+# T011
+def test_eating_spawns_burst_at_head_and_triggers_pulse():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    assert flow.game.score == 1
+    assert len(flow.bursts) == 1
+    burst = flow.bursts[0]
+    assert burst.origin == (hx + 1, hy)
+    assert flow.pulse.scale > 1 or flow.pulse.flash > 0
+
+
+def test_moving_without_eating_spawns_nothing():
+    flow = to_playing(Flow(seed=1))
+    flow.game.food = (0, 0)
+    flow.update(STEP_MS)
+    assert flow.bursts == []
+    assert flow.pulse.flash == 0
+
+
+def test_effects_keep_updating_after_game_over():
+    flow = to_playing(Flow(seed=1))
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + 1, hy)
+    flow.update(STEP_MS)
+    assert len(flow.bursts) == 1
+    to_menu(flow)
+    for _ in range(20):
+        flow.update(50)
+    assert flow.bursts == []

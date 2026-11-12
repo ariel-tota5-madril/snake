@@ -60,16 +60,16 @@ o comportamento da 001. Todas as histórias dependem dele.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Test in `tests/test_juice.py`: `ease_out(0) == 0`, `ease_out(1) == 1`, increasing in between, clamped outside [0, 1]
-- [ ] T009 [P] [US1] Test in `tests/test_juice.py`: `ParticleBurst` creates 16 particles at the origin; after 600 ms ("PARTICLE_LIFE_MS = 600") `done` is True and no particle remains; two bursts with equally seeded RNGs produce identical particles
-- [ ] T010 [P] [US1] Test in `tests/test_juice.py`: `ScorePulse` has `scale == 1` and `flash == 0` when idle; mid-pulse `scale > 1` and `0 < flash < 1`; after 300 ms ("PULSE_MS = 300") back to `scale == 1`, `flash == 0`; `trigger()` mid-pulse restarts it
-- [ ] T011 [US1] Test in `tests/test_flow.py`: eating adds one burst centered on the new head cell and triggers the pulse; moving without eating adds no burst; effects keep updating in every phase
+- [X] T008 [P] [US1] Test in `tests/test_juice.py`: `ease_out(0) == 0`, `ease_out(1) == 1`, increasing in between, clamped outside [0, 1]
+- [X] T009 [P] [US1] Test in `tests/test_juice.py`: `ParticleBurst` creates 16 particles at the origin; after 600 ms ("PARTICLE_LIFE_MS = 600") `done` is True and no particle remains; two bursts with equally seeded RNGs produce identical particles
+- [X] T010 [P] [US1] Test in `tests/test_juice.py`: `ScorePulse` has `scale == 1` and `flash == 0` when idle; mid-pulse `scale > 1` and `0 < flash < 1`; after 300 ms ("PULSE_MS = 300") back to `scale == 1`, `flash == 0`; `trigger()` mid-pulse restarts it
+- [X] T011 [US1] Test in `tests/test_flow.py`: eating adds one burst centered on the new head cell and triggers the pulse; moving without eating adds no burst; effects keep updating in every phase
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement `ease_out`, `ParticleBurst` (16 particles, speed 60–180 px/s, life 600 ms) and `ScorePulse` (300 ms, `scale = 1 + 0.5·sin(π·p)`, `flash = 1 − p`) in `src/snake/juice.py`
-- [ ] T013 [US1] In `src/snake/flow.py`: create the effects RNG from the seed (separate from the game RNG), detect eating by score increase after each step, spawn a burst + trigger the pulse, update and prune bursts every frame
-- [ ] T014 [US1] In `src/snake/app.py`: draw particles (size/alpha by `life`) and the score with `pulse.scale` and color blended toward the flash color by `pulse.flash`
+- [X] T012 [P] [US1] Implement `ease_out`, `ParticleBurst` (16 particles, speed 60–180 px/s, life 600 ms) and `ScorePulse` (300 ms, `scale = 1 + 0.5·sin(π·p)`, `flash = 1 − p`) in `src/snake/juice.py`
+- [X] T013 [US1] In `src/snake/flow.py`: create the effects RNG from the seed (separate from the game RNG), detect eating by score increase after each step, spawn a burst + trigger the pulse, update and prune bursts every frame
+- [X] T014 [US1] In `src/snake/app.py`: draw particles (size/alpha by `life`) and the score with `pulse.scale` and color blended toward the flash color by `pulse.flash`
 
 **Checkpoint**: `pytest` verde; comer mostra partículas e o placar pulsa.
 

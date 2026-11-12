@@ -18,6 +18,8 @@ FOOD = (230, 90, 70)
 TEXT = (240, 240, 240)
 DIM = (140, 140, 150)
 HIGHLIGHT = (250, 210, 90)
+FLASH = (255, 220, 60)
+PARTICLE = (255, 170, 80)
 OVERLAY = (0, 0, 0, 170)
 
 KEYS = {
@@ -45,9 +47,27 @@ def draw_board(screen: pygame.Surface, flow: Flow) -> None:
         pygame.draw.rect(screen, color, (x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2))
 
 
+def blend(a, b, t: float):
+    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+
+def draw_particles(screen: pygame.Surface, flow: Flow) -> None:
+    layer = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    for burst in flow.bursts:
+        for p in burst.particles:
+            radius = max(1, round(4 * p.life))
+            center = ((p.x + 0.5) * CELL, (p.y + 0.5) * CELL)
+            pygame.draw.circle(layer, (*PARTICLE, round(255 * p.life)), center, radius)
+    screen.blit(layer, (0, 0))
+
+
 def draw_score(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
-    score = font.render(f"Pontos: {flow.game.score}", True, TEXT)
-    screen.blit(score, (8, 6))
+    pulse = flow.pulse
+    label = font.render(f"Pontos: {flow.game.score}", True, blend(TEXT, FLASH, pulse.flash))
+    if pulse.scale != 1:
+        w, h = label.get_size()
+        label = pygame.transform.smoothscale(label, (round(w * pulse.scale), round(h * pulse.scale)))
+    screen.blit(label, label.get_rect(midleft=(8, 18)))
 
 
 def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow, menu: EndMenu) -> None:
@@ -66,6 +86,7 @@ def draw_end_menu(screen: pygame.Surface, font: pygame.font.Font, flow: Flow, me
 
 def draw(screen: pygame.Surface, font: pygame.font.Font, flow: Flow) -> None:
     draw_board(screen, flow)
+    draw_particles(screen, flow)
     draw_score(screen, font, flow)
     if flow.menu is not None:
         draw_end_menu(screen, font, flow, flow.menu)
