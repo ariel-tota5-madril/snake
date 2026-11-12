@@ -1,6 +1,7 @@
 """Núcleo puro do Snake: regras de jogo sem renderização, sem relógio e sem RNG global."""
 
 import random
+from dataclasses import dataclass
 from enum import Enum
 
 Cell = tuple[int, int]
@@ -25,6 +26,16 @@ class Status(Enum):
     WON = "won"
 
 
+@dataclass(frozen=True)
+class TongueShot:
+    """Resultado de um disparo da língua (006): direção, casas alcançadas e se comeu a fruta."""
+
+    direction: Direction
+    reach: int
+    ate: bool
+    target: Cell | None = None
+
+
 class Game:
     def __init__(
         self,
@@ -47,6 +58,7 @@ class Game:
         self.food: Cell | None = None
         self.specials: dict[Cell, int] = {}  # Feeding Frenzy: casa -> variante (0 roxa, 1 dourada)
         self._in_frenzy = False
+        self._grow = 0  # crescimentos pendentes (fruta comida pela língua, 006)
         self.score = 0
         self.status = Status.RUNNING
         self.food = self._spawn_food()
@@ -69,8 +81,8 @@ class Game:
             if (x, y) not in occupied
         ]
 
-    def _spawn_food(self) -> Cell | None:
-        free = self._free_cells()
+    def _spawn_food(self, exclude: Cell | None = None) -> Cell | None:
+        free = [c for c in self._free_cells() if c != exclude]
         return self._rng.choice(free) if free else None
 
     def start_frenzy(self, count: int = 10) -> int:
@@ -90,6 +102,32 @@ class Game:
         self.specials = {}
         self._in_frenzy = False
         self.food = self._spawn_food()
+
+    def tongue(self, reach: int = 3) -> TongueShot:
+        """Dispara a língua na direção atual: come a fruta a até `reach` casas (006/FR-002/003).
+
+        Parede e corpo param a língua. Comer conta como coleta normal: placar +1, nova fruta e
+        a cobra cresce no próximo passo.
+        """
+        if self.status is not Status.RUNNING:
+            return TongueShot(self.direction, 0, False)
+        hx, hy = self._snake[0]
+        dx, dy = self.direction.value
+        body = set(self._snake[1:])
+        reached = 0
+        for d in range(1, reach + 1):
+            cell = (hx + dx * d, hy + dy * d)
+            if not (0 <= cell[0] < self.width and 0 <= cell[1] < self.height) or cell in body:
+                break
+            reached = d
+            if cell == self.food:
+                self.score += 1
+                self._grow += 1
+                self.food = self._spawn_food(exclude=cell)  # a casa comida ainda está livre
+                if self.food is None:
+                    self.status = Status.WON
+                return TongueShot(self.direction, d, True, cell)
+        return TongueShot(self.direction, reached, False)
 
     def fail(self) -> None:
         """Derrota sem colisão (tempo do Frenzy esgotado)."""
@@ -123,12 +161,16 @@ class Game:
             self.status = Status.GAME_OVER
             return
         eating = head == self.food
-        body = self._snake if eating else self._snake[:-1]
+        body = self._snake if eating or self._grow else self._snake[:-1]
         if head in body:
             self.status = Status.GAME_OVER
             return
 
         self._snake.insert(0, head)
+        if not eating and self._grow:
+            self._grow -= 1  # a cauda fica: cresce pela fruta comida com a língua
+            self.specials.pop(head, None)
+            return
         if not eating:
             self._snake.pop()
             self.specials.pop(head, None)  # especial: some sem crescer nem pontuar

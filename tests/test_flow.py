@@ -391,6 +391,7 @@ EXPECTED_SOUND_EVENTS = {
     "VOLUME_PREVIEW", "MUSIC_TITLE", "MUSIC_GAME", "MUSIC_STOP", "MUSIC_DUCK", "MUSIC_UNDUCK",
     "TIMER_TICK", "TIMEOUT_ALARM", "MUSIC_FRENZY", "BOOM",  # 004
     "NAME_TYPE", "ROCKET_IGNITE", "ROCKET_LAUNCH", "ROCKET_HIT", "ROCKET_LAND", "FIRST_PLACE",  # 005
+    "TONGUE", "TONGUE_READY",  # 006
 }
 
 
@@ -1466,3 +1467,166 @@ def test_ranking_enter_or_escape_returns_to_title_keeping_the_music(tmp_path):
         assert flow.phase is Phase.TITLE
         assert SoundEvent.MUSIC_TITLE not in flow.drain_sounds()
         assert flow.ranking is None
+
+
+
+# --- 006: língua de Yoshi ---------------------------------------------------------------
+
+
+def food_ahead(flow: Flow, distance: int) -> None:
+    hx, hy = flow.game.snake[0]
+    flow.game.food = (hx + distance, hy)
+
+
+# T006 — FR-001/FR-002/FR-004
+def test_space_eats_the_food_within_reach():
+    flow = playing_and_drained()
+    food_ahead(flow, 2)
+    flow.bursts = []
+    flow.space()
+    events = flow.drain_sounds()
+    assert SoundEvent.TONGUE in events and SoundEvent.EAT in events
+    assert flow.game.score == 1 and len(flow.bursts) == 1
+    assert flow.pulse.flash > 0  # pulso do placar disparado
+    flow.game.food = (0, 0)
+    flow.update(60)
+    assert SoundEvent.PULSE_POP in flow.drain_sounds()
+
+
+def test_space_during_cooldown_does_nothing():
+    flow = playing_and_drained()
+    food_ahead(flow, 2)
+    flow.space()
+    flow.drain_sounds()
+    food_ahead(flow, 1)
+    flow.space()
+    assert flow.drain_sounds() == [] and flow.game.score == 1
+
+
+def test_a_miss_also_starts_the_cooldown():
+    flow = playing_and_drained()
+    flow.game.food = (0, 0)
+    flow.space()
+    assert SoundEvent.TONGUE in flow.drain_sounds()
+    assert not flow.tongue.ready and flow.game.score == 0
+
+
+def test_cooldown_only_runs_while_playing():
+    flow = playing_and_drained()
+    flow.game.food = (0, 0)
+    flow.space()
+    flow.update(100)
+    left = flow.tongue.remaining_ms
+    assert left == 8000 - 100
+    paused(flow)
+    flow.update(3000)
+    flow.confirm()  # Continuar
+    while flow.phase is not Phase.PLAYING:
+        flow.update(50)
+    assert flow.tongue.remaining_ms == left
+
+
+def test_space_outside_playing_confirms():
+    flow = to_title(Flow(seed=1))
+    flow.space()
+    assert flow.phase is Phase.TITLE_OUT
+
+
+def test_tongue_is_locked_during_the_frenzy():
+    flow, _ = into_frenzy()
+    assert flow.tongue_locked
+    flow.game.food = None
+    flow.space()
+    assert flow.drain_sounds() == [] and flow.tongue.ready
+
+
+def test_restart_gives_a_ready_tongue():
+    flow = playing_and_drained()
+    flow.game.food = (0, 0)
+    flow.space()
+    to_menu(flow)
+    flow.confirm()  # Jogar de novo
+    to_playing(flow)
+    assert flow.tongue.ready
+
+
+def test_tongue_eat_at_threshold_starts_the_frenzy():
+    flow = playing_and_drained()
+    flow.game.score = 9
+    food_ahead(flow, 3)
+    flow.space()
+    assert flow.frenzy is not None and flow.phase is Phase.FRENZY_INTRO
+
+
+def test_tongue_is_deterministic():
+    def run(seed):
+        flow = playing_and_drained(seed)
+        food_ahead(flow, 2)
+        flow.space()
+        return flow.game.score, flow.game.food
+    assert run(4) == run(4)
+
+
+
+# T010 — FR-009 e aviso adiado no Frenzy (FR-005)
+def fired_and_almost_ready(flow: Flow, left_ms: float = 30) -> Flow:
+    flow.game.food = (0, 0)
+    flow.space()
+    flow.tongue.remaining_ms = left_ms  # encurta a espera (a cobra não bate na parede)
+    flow.drain_sounds()
+    return flow
+
+
+def test_ready_is_announced_once_when_the_cooldown_ends():
+    flow = fired_and_almost_ready(playing_and_drained())
+    flow.update(20)
+    assert SoundEvent.TONGUE_READY not in flow.drain_sounds()
+    flow.update(20)
+    assert flow.drain_sounds().count(SoundEvent.TONGUE_READY) == 1
+    assert flow.icon_pulse.flash > 0
+    flow.update(100)
+    assert SoundEvent.TONGUE_READY not in flow.drain_sounds()
+
+
+def test_no_ready_sound_at_the_start_or_after_restart():
+    flow = Flow(seed=1)
+    events = sounds_until(flow, Phase.PLAYING)
+    flow.update(500)
+    events += flow.drain_sounds()
+    assert SoundEvent.TONGUE_READY not in events
+    to_menu(flow)
+    flow.confirm()  # Jogar de novo
+    events = sounds_until(flow, Phase.PLAYING)
+    assert SoundEvent.TONGUE_READY not in events
+
+
+def test_ready_during_the_frenzy_is_announced_after_surviving():
+    flow = playing_and_drained()
+    fired_and_almost_ready(flow, 5_000)
+    flow, _ = into_frenzy(flow)
+    flow.tongue.remaining_ms = 10
+    flow.game.specials = {(0, 0): 0, (1, 0): 1}
+    flow.update(50)  # fica pronta durante o Frenzy
+    assert flow.tongue.ready
+    assert SoundEvent.TONGUE_READY not in flow.drain_sounds()
+    specials_in_front(flow, 1)
+    events = run_until_normal(flow)
+    assert SoundEvent.TONGUE_READY not in events  # ainda no "SURVIVED!"
+    flow.update(10)  # primeiro quadro com a partida andando de novo
+    assert flow.drain_sounds().count(SoundEvent.TONGUE_READY) == 1
+
+
+def test_frenzy_ending_in_game_over_does_not_announce():
+    flow = playing_and_drained()
+    fired_and_almost_ready(flow, 5_000)
+    flow, _ = into_frenzy(flow)
+    flow.tongue.remaining_ms = 10
+    flow.game.specials = {(0, 0): 0}
+    flow.update(50)
+    flow.frenzy.remaining_ms = 1
+    flow.update(1)  # tempo esgotado
+    events = []
+    for _ in range(100):
+        flow.update(50)
+        events += flow.drain_sounds()
+    assert SoundEvent.TONGUE_READY not in events

@@ -44,6 +44,10 @@ SLIDER_BG = (60, 64, 76)
 SPECIAL_COLORS = ((190, 90, 255), (255, 200, 40))  # 004: roxa ("FEEDING") e dourada ("FRENZY")
 TINTS = {"fruit": PARTICLE, "purple": SPECIAL_COLORS[0], "gold": SPECIAL_COLORS[1], "flame": (255, 150, 40)}
 FIRST_PLACE_COLOR = (255, 215, 60)
+TONGUE_COLOR = (240, 100, 150)  # 006
+ICON_SIZE = CELL * 2  # ícone da língua: ~2 casas no canto inferior esquerdo (FR-007)
+ICON_MARGIN = 16
+ICON_BG = (60, 34, 58)
 RUN_OVER_RED = (255, 70, 70)  # quem o foguete atropelou (FR-013b)
 RANKING_UI = {Phase.RANKING_IN, Phase.RANKING, Phase.RANKING_OUT}
 GLOW_PERIOD_MS = 1200
@@ -88,6 +92,26 @@ def draw_board(screen: pygame.Surface, flow: Flow) -> None:
         color = SNAKE_HEAD if i == 0 else SNAKE_BODY
         gap = round(S)
         pygame.draw.rect(screen, color, (x * CELL + gap, y * CELL + gap, CELL - 2 * gap, CELL - 2 * gap))
+    draw_tongue(screen, flow)
+
+
+def draw_tongue(screen: pygame.Surface, flow: Flow) -> None:
+    """Língua esticando e voltando a partir da cabeça; puxa a fruta comida na volta (006/FR-006)."""
+    tongue = flow.tongue
+    if tongue.extension <= 0 or tongue.shot is None:
+        return
+    shot = tongue.shot
+    hx, hy = flow.game.snake[0]
+    dx, dy = shot.direction.value
+    length = (0.5 + max(shot.reach, 0.6) * tongue.extension) * CELL  # do centro da cabeça
+    start = ((hx + 0.5) * CELL, (hy + 0.5) * CELL)
+    tip = (start[0] + dx * length, start[1] + dy * length)
+    pygame.draw.line(screen, TONGUE_COLOR, start, tip, round(CELL * 0.28))
+    pygame.draw.circle(screen, TONGUE_COLOR, tip, round(CELL * 0.2))
+    if shot.ate and tongue.retracting:
+        pad = round(3 * S)
+        size = CELL - 2 * pad
+        pygame.draw.rect(screen, FOOD, (tip[0] - size / 2, tip[1] - size / 2, size, size))
 
 
 @cache
@@ -238,6 +262,73 @@ def draw_survived(screen: pygame.Surface, flow: Flow) -> None:
     label.set_alpha(round(255 * progress))
     cx, cy = screen.get_rect().center
     screen.blit(label, label.get_rect(center=(cx, cy + (1 - progress) * CELL / 2)))
+
+
+@cache
+def tongue_icon(state: str) -> pygame.Surface:
+    """Ícone da língua: "full" (pronta), "dim" (recarregando) ou "gray" (bloqueada no Frenzy)."""
+    size = ICON_SIZE
+    icon = pygame.Surface((size, size), pygame.SRCALPHA)
+    c = size / 2
+    pygame.draw.circle(icon, ICON_BG, (c, c), size * 0.48)
+    pygame.draw.circle(icon, SNAKE_HEAD, (c * 0.62, c), size * 0.2)  # cabeça
+    pygame.draw.line(icon, TONGUE_COLOR, (c * 0.8, c), (c * 1.55, c), round(size * 0.1))  # língua
+    pygame.draw.circle(icon, TONGUE_COLOR, (c * 1.55, c), size * 0.08)
+    pygame.draw.circle(icon, FOOD, (c * 1.62, c * 0.62), size * 0.07)  # fruta alvo
+    if state == "dim":
+        icon.fill((90, 90, 90, 255), special_flags=pygame.BLEND_RGBA_MULT)
+    elif state == "gray":
+        icon = pygame.transform.grayscale(icon)
+        icon.fill((160, 160, 160, 200), special_flags=pygame.BLEND_RGBA_MULT)
+    return icon
+
+
+@cache
+def icon_halo(alpha: int) -> pygame.Surface:
+    size = round(ICON_SIZE * 1.5)
+    return pygame.transform.smoothscale(halo(TONGUE_COLOR, alpha), (size, size))
+
+
+def clock_wedge(size: int, progress: float) -> pygame.Surface:
+    """Máscara em forma de relógio: fatia do topo no sentido horário, proporcional ao progresso."""
+    mask = pygame.Surface((size, size), pygame.SRCALPHA)
+    c = size / 2
+    steps = max(2, round(48 * progress))
+    points = [(c, c)]
+    for i in range(steps + 1):
+        a = -math.pi / 2 + 2 * math.pi * progress * i / steps
+        points.append((c + math.cos(a) * size, c + math.sin(a) * size))
+    if len(points) >= 3:
+        pygame.draw.polygon(mask, (255, 255, 255, 255), points)
+    return mask
+
+
+NO_ICON_PHASES = TITLE_PHASES | NAME_UI | MENU_PHASES | RANKING_UI | OPTIONS_UI  # fora da partida
+
+
+def draw_tongue_icon(screen: pygame.Surface, flow: Flow) -> None:
+    """Ícone da língua (006/US2): relógio iluminando na recarga, pulso e brilho quando pronta."""
+    if flow.phase in NO_ICON_PHASES:
+        return
+    tongue = flow.tongue
+    size = ICON_SIZE
+    center = (ICON_MARGIN + size / 2, screen.get_height() - ICON_MARGIN - size / 2)
+    if flow.tongue_locked:
+        icon = tongue_icon("gray")
+    elif tongue.ready:
+        wave = (1 + math.sin(2 * math.pi * pygame.time.get_ticks() / GLOW_PERIOD_MS)) / 2
+        glow = icon_halo(40 + round(wave * 6) * 10)  # brilho leve contínuo (FR-010)
+        screen.blit(glow, glow.get_rect(center=center))
+        icon = tongue_icon("full")
+        scale = flow.icon_pulse.scale * (1 + 0.04 * wave)  # pulso ao ficar pronta + respiração
+        if scale != 1:
+            icon = pygame.transform.smoothscale(icon, (round(size * scale), round(size * scale)))
+    else:
+        icon = tongue_icon("dim").copy()
+        lit = tongue_icon("full").copy()
+        lit.blit(clock_wedge(size, tongue.progress), (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        icon.blit(lit, (0, 0))
+    screen.blit(icon, icon.get_rect(center=center))
 
 
 def draw_panel(screen: pygame.Surface, panel: pygame.Surface, progress: float) -> None:
@@ -472,6 +563,7 @@ def draw(screen: pygame.Surface, fonts: tuple[pygame.font.Font, pygame.font.Font
     screen.blit(world, (dx * CELL, dy * CELL))
     draw_score(screen, font, flow)
     draw_timer(screen, font, flow)
+    draw_tongue_icon(screen, flow)
     if flow.phase is Phase.FRENZY_INTRO:
         draw_stamps(screen, flow)
     elif flow.phase is Phase.SURVIVED:
@@ -509,7 +601,9 @@ def handle_event(flow: Flow, event: pygame.event.Event) -> None:
         elif event.unicode:
             flow.type_text(event.unicode)
     elif event.type == pygame.KEYDOWN:
-        if event.key in WASD:
+        if event.key == pygame.K_SPACE:
+            flow.space()  # 006: língua na partida; confirma nas outras telas
+        elif event.key in WASD:
             flow.direction(WASD[event.key])
         elif event.key in KEYS:
             flow.direction(KEYS[event.key])

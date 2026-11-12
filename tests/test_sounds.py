@@ -134,3 +134,21 @@ def test_rocket_sounds(event, low, high):
 def test_first_place_fanfare_is_a_jingle():
     samples = sounds.JINGLES[SoundEvent.FIRST_PLACE]
     assert 800 <= duration_ms(samples) <= 2500
+
+
+# 006 / T013 — sons da língua
+def test_tongue_shot_is_short_and_descending():
+    samples, volume = sounds.SFX[SoundEvent.TONGUE]
+    assert 100 <= duration_ms(samples) <= 160
+    half = len(samples) // 2
+    assert zero_crossings(samples[:half]) > zero_crossings(samples[half:])
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO
+    assert 0 < volume <= 1
+
+
+def test_tongue_ready_chime_is_short_and_ascending():
+    samples, volume = sounds.SFX[SoundEvent.TONGUE_READY]
+    assert 140 <= duration_ms(samples) <= 200
+    half = len(samples) // 2
+    assert zero_crossings(samples[half:]) > zero_crossings(samples[:half])
+    assert abs(samples[0]) <= NEAR_ZERO and abs(samples[-1]) <= NEAR_ZERO

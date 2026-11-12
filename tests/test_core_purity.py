@@ -11,6 +11,7 @@ import snake.scoreboard
 import snake.settings
 import snake.sounds
 import snake.synth
+import snake.tongue
 
 FORBIDDEN = {"pygame", "time", "datetime"}
 
@@ -63,3 +64,9 @@ def test_highscore_modules_do_not_import_rendering_or_clock():
     for module in (snake.highscores, snake.scoreboard):
         imported = imports_of(module)
         assert not imported & FORBIDDEN, f"{module.__name__} importa {imported & FORBIDDEN}"
+
+
+# 006 / T002 — a recarga da língua também é lógica pura
+def test_tongue_does_not_import_rendering_or_clock():
+    imported = imports_of(snake.tongue)
+    assert not imported & FORBIDDEN, f"tongue importa {imported & FORBIDDEN}"

@@ -2,7 +2,7 @@
 
 Jogo Snake em Python, construído com Spec-Driven Development (GitHub Spec Kit).
 Especificações, planos e tarefas por feature em [`specs/`](specs/)
-(001: núcleo do jogo; 002: game juice; 003: áudio, pausa e Opções; 004: Feeding Frenzy; 005: highscore);
+(001: núcleo do jogo; 002: game juice; 003: áudio, pausa e Opções; 004: Feeding Frenzy; 005: highscore; 006: língua de Yoshi);
 regras do projeto em [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 
 ## Setup
@@ -33,7 +33,7 @@ Fluxo de telas: **tela inicial** ("Jogar" / "Ranking" / "Opções" / "Sair") →
   são digitadas (Backspace apaga, Enter confirma, Esc volta).
 - Input buffer: até 2 direções apertadas em sequência rápida ficam guardadas e são aplicadas uma
   por passo (ex.: ↓ e ← quase juntos fazem a curva completa em vez de perder o segundo comando).
-- Espaço ou Enter: confirmam a opção do menu.
+- Espaço ou Enter: confirmam a opção do menu. Na partida, Espaço dispara a língua (veja abaixo).
 - Esc: pausa a partida ("Continuar" / "Opções" / "Tela inicial"); na pausa, continua; em Opções,
   volta. Ao continuar, há uma contagem rápida de 1,5 s.
 - "Jogar de novo" volta direto para a contagem, com o mesmo nome; "Sair" (tela inicial) fecha o
@@ -50,6 +50,14 @@ especiais (roxas e douradas). Você tem **20 s** para comer todas, com a cobra 1
 (mínimo de 50 ms por passo). No modo, a cobra não cresce e o placar não sobe. Nos últimos 5 s o
 cronômetro fica vermelho e faz tique. Comeu todas: "SURVIVED!" e a partida volta ao normal, com o
 mesmo tamanho. O tempo acabou: fim de jogo.
+
+## Língua de Yoshi
+
+Na partida, **Espaço** dispara a língua para a frente: se a fruta estiver a até **3 casas**, na
+mesma linha e sem parede ou corpo no caminho, ela é comida na hora (conta como uma coleta normal).
+Todo disparo, acertando ou não, recarrega por **8 s**. O ícone no canto inferior esquerdo mostra a
+recarga como um relógio que se ilumina; ao ficar pronta, pulsa com um som e continua brilhando de
+leve. No Feeding Frenzy a língua fica bloqueada (ícone acinzentado).
 
 ## Highscore
 
@@ -73,6 +81,7 @@ funciona normalmente, em silêncio.
 - `src/snake/core.py` — núcleo puro: todas as regras, sem Pygame, sem relógio, RNG injetado.
 - `src/snake/highscores.py` — placar das 10 melhores e persistência em JSON (sem Pygame).
 - `src/snake/scoreboard.py` — animação do placar: foguete, câmera, explosões, rolagem (sem Pygame).
+- `src/snake/tongue.py` — recarga e animação da língua de Yoshi (sem Pygame).
 - `src/snake/frenzy.py` — curva de velocidade, limiares e cronômetro do Feeding Frenzy (sem Pygame).
 - `src/snake/menu.py` — menus (tela inicial, pausa, fim, Opções) sem Pygame.
 - `src/snake/synth.py` — síntese 8-bit: ondas, rampas e mixagem (sem Pygame).

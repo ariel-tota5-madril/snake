@@ -175,11 +175,27 @@ def _scoreboard_sfx() -> None:
     )
 
 
+def _tongue_sfx() -> None:
+    """006: "tchum" elástico do disparo e o bipe duplo de "pronto"."""
+    SFX[SoundEvent.TONGUE] = (
+        mix(
+            render([Note("square25", 900, 120, 0.8, freq_end=300, decay=0.7)]),
+            render([Note("noise", 6000, 40, 0.3, decay=1)]),
+        ),
+        0.6,
+    )
+    SFX[SoundEvent.TONGUE_READY] = (
+        render([Note("square25", 1320, 70, 0.7), Note("square25", 1760, 90, 0.7, decay=1)]),
+        0.55,
+    )
+
+
 def build() -> None:
     """Gera todos os sons (uma vez, ao abrir o jogo)."""
     _gameplay_sfx()
     _ui_sfx()
     _frenzy_sfx()
     _scoreboard_sfx()
+    _tongue_sfx()
     _music()
     _jingles()

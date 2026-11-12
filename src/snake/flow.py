@@ -13,6 +13,7 @@ from pathlib import Path
 
 from snake.core import Direction, Game, Status
 from snake.highscores import Entry, Highscores
+from snake.tongue import REACH, Tongue
 from snake.frenzy import SPECIAL_COUNT, Frenzy, step_interval_ms, threshold
 from snake.juice import (
     COLLISION_SHAKE,
@@ -90,6 +91,8 @@ class SoundEvent(Enum):
     ROCKET_HIT = "rocket_hit"
     ROCKET_LAND = "rocket_land"
     FIRST_PLACE = "first_place"
+    TONGUE = "tongue"  # 006: disparo da língua
+    TONGUE_READY = "tongue_ready"  # 006: recarga terminou
 
 
 class Phase(Enum):
@@ -186,6 +189,9 @@ class Flow:
         self.scoreboard: Scoreboard | None = None
         self.ranking: Scoreboard | None = None  # consulta pela tela inicial (FR-010b)
         self._end_choice = MenuOption.PLAY_AGAIN
+        self.tongue = Tongue()  # 006: língua de Yoshi
+        self.icon_pulse = ScorePulse()
+        self._ready_announced = True  # a partida começa com a língua pronta, sem som
         self._enter_title()
 
     # --- consultas ------------------------------------------------------------------------
@@ -215,6 +221,11 @@ class Flow:
         if self.phase in LEAVING:
             return 1 - p
         return 1.0
+
+    @property
+    def tongue_locked(self) -> bool:
+        """Sem língua no Feeding Frenzy (006/FR-005): o ícone fica acinzentado."""
+        return self.game.in_frenzy
 
     @property
     def accepts_text(self) -> bool:
@@ -308,6 +319,21 @@ class Flow:
             field = VOLUME_FIELDS[menu.selected]
             if self.settings.adjust(field, 1 if direction is Direction.RIGHT else -1):
                 self._emit(SoundEvent.VOLUME_PREVIEW if field == "sfx" else SoundEvent.NAV)
+
+    def space(self) -> None:
+        """Espaço: na partida dispara a língua (006/FR-001); nas outras telas confirma."""
+        if self.phase is not Phase.PLAYING:
+            self.confirm()
+            return
+        if self.tongue_locked or not self.tongue.ready:
+            return  # em recarga ou no Frenzy: nada acontece, sem som
+        shot = self.game.tongue(REACH)
+        self.tongue.fire(shot)
+        self._ready_announced = False
+        self._emit(SoundEvent.TONGUE)
+        if shot.ate:
+            self._eat_effects(self.game.snake[0])
+        self._check_end()
 
     def type_text(self, ch: str) -> None:
         """Texto digitado na entrada de nome (005/FR-002)."""
@@ -409,7 +435,7 @@ class Flow:
             self.scoreboard = None
             if self._end_choice is MenuOption.PLAY_AGAIN:
                 self.game.restart()
-                self._reset_frenzy()
+                self._reset_round()
                 self._go(Phase.COUNTDOWN)  # mesmo nome, sem pedir de novo (FR-004)
             else:
                 self._back_to_title()
@@ -455,6 +481,8 @@ class Flow:
         self.bursts = [b for b in self.bursts if not b.done]
         self.pulse.update(dt_ms)
         self.timer_pulse.update(dt_ms)
+        self.tongue.update_anim(dt_ms)
+        self.icon_pulse.update(dt_ms)
         self.shake.update(dt_ms)
         if self._pop_in_ms is not None:
             self._pop_in_ms -= dt_ms
@@ -474,7 +502,19 @@ class Flow:
             self._step_elapsed -= self._interval()
             self._step_once()
         self._check_end()
+        self.tongue.update_cooldown(dt_ms)  # a recarga só anda com a cobra andando (FR-011)
+        self._announce_tongue_ready()
         self._update_frenzy(dt_ms)
+
+    def _announce_tongue_ready(self) -> None:
+        """Pulso + som quando a língua fica pronta; no Frenzy, espera o modo acabar (FR-005/009)."""
+        if self._ready_announced or not self.tongue.ready or self.tongue_locked:
+            return
+        if self.phase is not Phase.PLAYING or self.game.status is not Status.RUNNING:
+            return
+        self._ready_announced = True
+        self.icon_pulse.trigger()
+        self._emit(SoundEvent.TONGUE_READY)
 
     def _interval(self) -> float:
         return step_interval_ms(len(self.game.snake), frenzy=self.game.in_frenzy)
@@ -493,13 +533,17 @@ class Flow:
             self.shake.trigger(*EAT_SHAKE)
             self._emit(SoundEvent.EAT)
         if self.game.score > score_before:
-            self.bursts.append(ParticleBurst(head, self._fx_rng))
-            self.pulse.trigger()
-            self.shake.trigger(*EAT_SHAKE)
-            self._emit(SoundEvent.EAT)
-            self._pop_in_ms = PULSE_POP_DELAY_MS
-            if self.game.score == threshold(self.frenzy_count):
-                self._start_frenzy()
+            self._eat_effects(head)
+
+    def _eat_effects(self, at) -> None:
+        """Coleta de fruta normal (pelo passo ou pela língua): efeitos, sons e limiar do Frenzy."""
+        self.bursts.append(ParticleBurst(at, self._fx_rng))
+        self.pulse.trigger()
+        self.shake.trigger(*EAT_SHAKE)
+        self._emit(SoundEvent.EAT)
+        self._pop_in_ms = PULSE_POP_DELAY_MS
+        if self.game.score == threshold(self.frenzy_count):
+            self._start_frenzy()
 
     # --- Feeding Frenzy (004) -------------------------------------------------------------
 
@@ -570,6 +614,12 @@ class Flow:
         self._emit(SoundEvent.MUSIC_STOP)
         self._go(Phase.SURVIVED)
 
+    def _reset_round(self) -> None:
+        """Partida nova: sem Frenzy e com a língua pronta."""
+        self._reset_frenzy()
+        self.tongue = Tongue()
+        self._ready_announced = True
+
     def _reset_frenzy(self) -> None:
         self.frenzy = None
         self.frenzy_count = 0
@@ -639,7 +689,7 @@ class Flow:
     def _back_to_title(self) -> None:
         """Abandona a partida e volta ao começo (pausa -> "Tela inicial" e placar -> "Tela inicial")."""
         self.game.restart()
-        self._reset_frenzy()
+        self._reset_round()
         self.bursts = []
         self.pulse = ScorePulse()
         self.shake = ScreenShake(self._fx_rng)
