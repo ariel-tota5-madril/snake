@@ -29,6 +29,8 @@ ao bater, a tela treme → **menu de fim** ("Restart" / "Opções" / "Quit").
 
 - Setas: mudam a direção da cobra; nos menus, ↑/↓ escolhem a opção; em Opções, ←/→ ajustam o
   volume.
+- Input buffer: até 2 direções apertadas em sequência rápida ficam guardadas e são aplicadas uma
+  por passo (ex.: ↓ e ← quase juntos fazem a curva completa em vez de perder o segundo comando).
 - Espaço ou Enter: confirmam a opção do menu.
 - Esc: pausa a partida ("Continuar" / "Opções" / "Tela inicial"); na pausa, continua; em Opções,
   volta. Ao continuar, há uma contagem rápida de 1,5 s.

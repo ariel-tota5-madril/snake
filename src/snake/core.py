@@ -4,6 +4,7 @@ import random
 from enum import Enum
 
 Cell = tuple[int, int]
+INPUT_BUFFER = 2  # comandos guardados: sequências rápidas (ex.: meia-volta) não se perdem
 
 
 class Direction(Enum):
@@ -42,7 +43,7 @@ class Game:
         cx, cy = self.width // 2, self.height // 2
         self._snake: list[Cell] = [(cx, cy), (cx - 1, cy), (cx - 2, cy)]
         self.direction = Direction.RIGHT
-        self._pending: Direction | None = None
+        self._queue: list[Direction] = []  # input buffer: um comando consumido por passo
         self.food: Cell | None = None
         self.specials: dict[Cell, int] = {}  # Feeding Frenzy: casa -> variante (0 roxa, 1 dourada)
         self._in_frenzy = False
@@ -95,20 +96,24 @@ class Game:
         self.status = Status.GAME_OVER
 
     def turn(self, direction: Direction) -> None:
-        """Registra a direção do próximo passo (no máximo um comando válido por passo)."""
-        if self.status is not Status.RUNNING or self._pending is not None:
+        """Enfileira uma direção (até INPUT_BUFFER); cada passo aplica a próxima da fila.
+
+        A validação é contra a última direção da fila (ou a atual, se vazia): o oposto seria
+        meia-volta sobre o corpo e a repetida não muda nada, então ambos são ignorados.
+        """
+        if self.status is not Status.RUNNING or len(self._queue) >= INPUT_BUFFER:
             return
-        if direction is self.direction.opposite:
+        last = self._queue[-1] if self._queue else self.direction
+        if direction is last or direction is last.opposite:
             return
-        self._pending = direction
+        self._queue.append(direction)
 
     def step(self) -> None:
         """Avança um passo de jogo (ordem descrita em data-model.md)."""
         if self.status is not Status.RUNNING:
             return
-        if self._pending is not None:
-            self.direction = self._pending
-            self._pending = None
+        if self._queue:
+            self.direction = self._queue.pop(0)
 
         hx, hy = self._snake[0]
         dx, dy = self.direction.value
