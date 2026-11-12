@@ -123,8 +123,8 @@ animadas (FR-007, FR-008, FR-009, FR-012, FR-013).
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T026 [P] Update `README.md` with the new screen flow (título → contagem → partida → fim)
-- [ ] T027 Measure frame time headlessly with 3 simultaneous bursts and confirm it stays within 60 fps (SC-004)
+- [X] T026 [P] Update `README.md` with the new screen flow (título → contagem → partida → fim)
+- [X] T027 Measure frame time headlessly with 3 simultaneous bursts and confirm it stays within 60 fps (SC-004)
 - [ ] T028 Run the full quickstart.md validation (pytest + manual checklist items 1–9) and record the result
 
 ---
