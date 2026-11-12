@@ -17,6 +17,15 @@
 - Q: Qual a curva de velocidade normal? → A: 125 ms por passo com 3 segmentos, −1 ms por segmento
   a mais, até o mínimo de 70 ms.
 - Q: Em quais pontuações o Feeding Frenzy começa? → A: 10, 20, 40, 80… (dobra a cada vez).
+- Q: Durante o modo, a tela mostra quantas frutas especiais faltam? → A: Sim: contador de
+  frutas restantes logo abaixo do cronômetro; o placar normal fica escondido durante o modo.
+- Q: Como o jogador percebe que perdeu por tempo esgotado? → A: Sinal próprio: o cronômetro
+  pisca em vermelho no "0" e toca um alarme 8-bit curto, sem tremor; depois jingle de derrota e
+  menu de fim, como na colisão.
+- Q: O cronômetro avisa quando o tempo está acabando? → A: Sim: nos últimos 5 s fica vermelho,
+  pulsa e toca um tique 8-bit curto a cada segundo.
+- Q: Qual a aparência das frutas especiais? → A: Metade roxo vivo (como "FEEDING") e metade
+  dourada (como "FRENZY"), as duas com brilho pulsante suave e partículas da própria cor ao comer.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -68,20 +77,24 @@ tempo acabar e ver o fim de jogo.
    cobra está consideravelmente mais rápida (FR-006) e com o mesmo tamanho de antes, a fruta
    normal não está no tabuleiro, há 10 frutas especiais de cor diferente em casas livres e o cronômetro mostra 20 s no centro do topo da tela.
 3. **Given** o Feeding Frenzy em andamento, **When** a cobra come uma fruta especial, **Then** a
-   fruta some, a cobra não cresce, o placar não muda e o contador de frutas restantes diminui.
+   fruta some, a cobra não cresce, o placar (escondido) não muda e o contador de frutas restantes
+   na tela diminui em 1.
 4. **Given** o Feeding Frenzy em andamento, **When** a cobra come a última fruta especial antes do
    cronômetro chegar a 0, **Then** o modo termina com sucesso e a partida volta ao normal, com uma
    fruta normal no tabuleiro, a cobra com o mesmo tamanho com que entrou no modo e a velocidade de
    volta à normal para esse tamanho.
 5. **Given** o Feeding Frenzy em andamento com frutas especiais restantes, **When** o cronômetro
-   chega a 0, **Then** a partida termina em fim de jogo (mesmo menu de fim de partida da derrota
-   normal).
-6. **Given** o Feeding Frenzy em andamento, **When** a cobra bate na parede ou em si mesma,
+   chega a 0, **Then** a cobra para, o cronômetro pisca em vermelho no "0", toca um alarme curto
+   (sem tremor) e a partida termina em fim de jogo, com o jingle de derrota e o mesmo menu de fim
+   de partida da derrota por colisão.
+6. **Given** o Feeding Frenzy com 5 s restantes, **When** o tempo corre, **Then** o cronômetro fica
+   vermelho e, a cada segundo (5, 4, 3, 2, 1), pulsa e toca um tique curto.
+7. **Given** o Feeding Frenzy em andamento, **When** a cobra bate na parede ou em si mesma,
    **Then** a partida termina em fim de jogo, como numa colisão normal.
-7. **Given** o primeiro Feeding Frenzy foi superado com 10 pontos, **When** o jogador continua
+8. **Given** o primeiro Feeding Frenzy foi superado com 10 pontos, **When** o jogador continua
    comendo frutas normais, **Then** o próximo Feeding Frenzy só começa no próximo limiar da
    sequência (FR-004): aos 20 pontos, depois aos 40, aos 80, e assim por diante.
-8. **Given** o Feeding Frenzy em andamento, **When** o jogador aperta Esc, **Then** a partida pausa
+9. **Given** o Feeding Frenzy em andamento, **When** o jogador aperta Esc, **Then** a partida pausa
    como sempre e o cronômetro também para; ao continuar, o cronômetro segue de onde parou.
 
 ---
@@ -176,9 +189,11 @@ com uma animação suave; quando a palavra sai, a partida volta ao normal com a 
 
 - **FR-004**: O Feeding Frenzy DEVE começar quando o placar atinge um limiar da sequência
   10, 20, 40, 80, 160… (cada limiar é o dobro do anterior).
-- **FR-005**: Ao começar o modo, a fruta normal DEVE sair do tabuleiro e 10 frutas especiais, de
-  cor claramente diferente da fruta normal, DEVEM aparecer em casas livres escolhidas
-  aleatoriamente (reprodutíveis com a mesma semente).
+- **FR-005**: Ao começar o modo, a fruta normal DEVE sair do tabuleiro e 10 frutas especiais DEVEM
+  aparecer em casas livres escolhidas aleatoriamente (reprodutíveis com a mesma semente): metade
+  roxo vivo (a cor de "FEEDING") e metade dourada (a cor de "FRENZY"), ambas com um brilho que
+  pulsa suavemente e claramente distintas da fruta normal e da cobra. As duas cores valem igual
+  (a diferença é só visual). Se couberem menos de 10, as cores continuam alternadas.
 - **FR-006**: Durante o modo, a cobra DEVE andar consideravelmente mais rápido: 1,5× a
   velocidade normal para o seu tamanho, com intervalo mínimo de 50 ms entre passos. O tamanho da
   cobra NÃO muda: ela entra e sai do modo com o mesmo número de segmentos. Ao sair do modo com
@@ -190,13 +205,18 @@ com uma animação suave; quando a palavra sai, a partida volta ao normal com a 
 - **FR-009**: Comer todas as frutas especiais antes do cronômetro chegar a 0 DEVE encerrar o modo
   com sucesso; uma fruta normal DEVE reaparecer numa casa livre e a partida segue normal.
 - **FR-010**: Se o cronômetro chegar a 0 com frutas especiais restantes, a partida DEVE terminar
-  em fim de jogo, com o mesmo fluxo, sons e menu da derrota por colisão.
+  em fim de jogo com sinal próprio de tempo esgotado: a cobra para, o cronômetro pisca em
+  vermelho mostrando "0" e toca um alarme 8-bit curto (sem tremor de tela e sem o som de batida);
+  em seguida vêm o jingle de derrota e o menu de fim de partida, como na derrota por colisão.
 - **FR-011**: Colisões durante o modo DEVEM terminar a partida como no jogo normal.
 
 **Feeding Frenzy — visual e som**
 
 - **FR-012**: O cronômetro DEVE aparecer grande, centralizado no topo da tela, mostrando os
-  segundos restantes, durante todo o tempo em que o modo está ativo e a cobra anda.
+  segundos restantes, durante todo o tempo em que o modo está ativo e a cobra anda. Logo abaixo
+  dele DEVE aparecer o número de frutas especiais restantes (ex.: "3 restantes"), atualizado a
+  cada fruta comida. Enquanto o modo estiver ativo, o placar normal DEVE ficar escondido e
+  reaparecer, com o mesmo valor, quando o modo termina com sucesso.
 - **FR-013**: A abertura DEVE parar a cobra e a música e mostrar "FEEDING" (roxo) e depois
   "FRENZY" (amarelo), na diagonal e centralizadas, cada uma com animação de carimbo (começa
   bem maior que o tamanho final e cai rápido até ele).
@@ -204,13 +224,16 @@ com uma animação suave; quando a palavra sai, a partida volta ao normal com a 
   partículas ao redor da palavra, acompanhado de tremor de tela.
 - **FR-015**: Ao fim da abertura, DEVE começar uma música 8-bit tensa e rápida, exclusiva do
   modo, em loop, que substitui a música da partida enquanto o modo durar.
-- **FR-016**: Ao comer uma fruta especial, DEVEM aparecer partículas da cor da fruta especial e
+- **FR-016**: Ao comer uma fruta especial, DEVEM aparecer partículas da cor da fruta comida (roxa ou dourada) e
   tocar o som de coleta, sem o pulso do placar (o placar não muda).
 - **FR-017**: Ao superar o modo, a partida DEVE parar, a música do modo parar e "SURVIVED!" em
   azul DEVE entrar com animação suave e depois sair; ao sair, a partida retoma com a música da
   partida.
 - **FR-018**: Os sons e a música do modo DEVEM respeitar os volumes de Música e Efeitos da tela de
   Opções.
+- **FR-019**: Nos últimos 5 s do modo, o cronômetro DEVE ficar vermelho, dar um pulso de escala a
+  cada segundo inteiro (5, 4, 3, 2, 1) e tocar um tique 8-bit curto a cada um desses segundos,
+  respeitando o volume de Efeitos; o tique não toca enquanto o cronômetro está parado (pausa).
 
 ### Key Entities
 
@@ -248,7 +271,7 @@ com uma animação suave; quando a palavra sai, a partida volta ao normal com a 
 
 - O texto exibido é "FEEDING" e "FRENZY" (grafia em inglês de *frenzy*); a descrição escreve
   "FRENEZY", tratado como erro de digitação.
-- Cores: fruta especial em roxo ou dourado, distinta da fruta normal; "SURVIVED!" em azul claro.
+- "SURVIVED!" em azul claro.
 - "Aumentar consideravelmente" no início do modo refere-se à velocidade, não ao tamanho: bônus de
   1,5× só durante o modo, podendo passar do limite normal da curva, mas nunca abaixo de 50 ms por
   passo (para continuar jogável).
