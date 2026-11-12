@@ -147,9 +147,9 @@ os volumes mantidos (quickstart.md itens 1–4, 8–10, 12).
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T030 [P] Update `README.md` with Esc/pause, the Options screen and where volumes are saved
-- [ ] T031 Measure: building all sounds at startup takes < 2 s and the game keeps 60 fps with audio (SC-004)
-- [ ] T032 Run the game loop with `SDL_AUDIODRIVER=dummy` and with the mixer forced to fail, confirming a full game completes silently (SC-005, FR-013)
+- [X] T030 [P] Update `README.md` with Esc/pause, the Options screen and where volumes are saved
+- [X] T031 Measure: building all sounds at startup takes < 2 s and the game keeps 60 fps with audio (SC-004)
+- [X] T032 Run the game loop with `SDL_AUDIODRIVER=dummy` and with the mixer forced to fail, confirming a full game completes silently (SC-005, FR-013)
 - [ ] T033 Run the full quickstart.md validation (pytest + manual checklist items 1–13) and record the result
 
 ---
