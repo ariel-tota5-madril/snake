@@ -119,13 +119,43 @@ animadas (FR-007, FR-008, FR-009, FR-012, FR-013).
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: Incremento pós-clarificação — pulso "punchy", mini tremor e grade 30×30 (Priority: P1)
+
+**Goal**: aplicar as clarificações de 2026-11-12: FR-002 revisado (pulso punchy), FR-015 (mini
+tremor ao comer) e FR-014 (grade 30×30, casas de 48 px, janela 1440×1440).
+
+**Independent Test**: abrir o jogo em 1440×1440 e comer frutas: placar salta, quica e pisca de
+branco para amarelo; a tela dá um tremor curto (quickstart.md itens 0 e 5).
+
+### Tests ⚠️
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation.** Testes antigos que
+> contradizem a spec revisada (amplitude do tremor em px; cobra inicial em (10,10) no `Flow`) DEVEM
+> ser atualizados nesta fase, pois a spec mudou.
+
+- [ ] T029 [P] [US1] Test in `tests/test_juice.py`: `ScorePulse` "punchy" — `scale == 1.8` at 60 ms, about 0.9 at 180 ms (the minimum), `scale == 1` and `flash == 0` at 300 ms; `warmth` goes 0 → 1 in the first 60 ms
+- [ ] T030 [P] [US2] Rewrite shake tests in `tests/test_juice.py` for `ScreenShake.trigger(amplitude, duration_ms)` in cells: offset within the decaying amplitude, `done` with `offset == (0, 0)` at `duration_ms`; a new `trigger` replaces the running shake; `EAT_SHAKE` amplitude is a third of `COLLISION_SHAKE` and lasts 150 ms
+- [ ] T031 [US1] Test in `tests/test_flow.py`: eating starts the eat shake (≤ 150 ms, then offset back to `(0, 0)`); colliding right after eating replaces it with the collision shake
+- [ ] T032 Test in `tests/test_flow.py`: `Flow()` uses a 30 × 30 grid and the snake starts at `((15, 15), (14, 15), (13, 15))`; update `test_restart_starts_a_new_game` to the 30 × 30 start
+
+### Implementation
+
+- [ ] T033 [US1] Rework `ScorePulse` in `src/snake/juice.py`: three-segment scale (1.0→1.8 by 60 ms, →0.9 by 180 ms, →1.0 by 300 ms) and `warmth` (0→1 in 60 ms)
+- [ ] T034 [US2] Make `ScreenShake` parametric in `src/snake/juice.py`: `trigger(amplitude, duration_ms)` in cells; constants `COLLISION_SHAKE = (1/3, 400)` and `EAT_SHAKE = (1/9, 150)`
+- [ ] T035 [US1] In `src/snake/flow.py`: default grid 30 × 30; trigger `EAT_SHAKE` on eating and `COLLISION_SHAKE` on game over; update the shake every frame in all phases
+- [ ] T036 In `src/snake/app.py`: `CELL = 48` (1440 × 1440 window), scale fonts, particles and score position by `CELL / 24`; shake offset multiplied by `CELL`; score flash blends white → yellow by `warmth`
+
+**Checkpoint**: `pytest` verde; janela 1440×1440, pulso punchy e mini tremor ao comer.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
 - [X] T026 [P] Update `README.md` with the new screen flow (título → contagem → partida → fim)
 - [X] T027 Measure frame time headlessly with 3 simultaneous bursts and confirm it stays within 60 fps (SC-004)
-- [ ] T028 Run the full quickstart.md validation (pytest + manual checklist items 1–9) and record the result
+- [ ] T028 Run the full quickstart.md validation (pytest + manual checklist items 0–9) and record the result
 
 ---
 
@@ -137,7 +167,8 @@ animadas (FR-007, FR-008, FR-009, FR-012, FR-013).
 - **Foundational (Phase 2)**: depends on Setup; BLOCKS all user stories (o `Flow` é a base de todas)
 - **User Stories (Phase 3–5)**: depend on Foundational; run in priority order P1 → P2 → P3,
   because all three edit `src/snake/flow.py` and `src/snake/app.py`
-- **Polish (Phase 6)**: depends on all user stories
+- **Incremento (Phase 6)**: depends on Phases 3–5 (altera pulso, tremor e o adaptador)
+- **Polish (Phase 7)**: depends on all user stories, including Phase 6
 
 ### User Story Dependencies
 
@@ -156,6 +187,7 @@ animadas (FR-007, FR-008, FR-009, FR-012, FR-013).
 - T001 and T002 in parallel
 - `test_juice.py` tasks ([P]) can be written alongside the `test_flow.py` task of the same story
 - T012 and T017 (`juice.py` classes) are independent of `flow.py` work
+- T029 and T030 (`test_juice.py`) can be written alongside T031–T032 (`test_flow.py`)
 
 ---
 
