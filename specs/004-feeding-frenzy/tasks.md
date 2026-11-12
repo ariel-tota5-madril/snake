@@ -141,7 +141,7 @@ porque o FR-002 mudou a velocidade.
 
 - [X] T028 [P] Update `README.md` with the progressive speed and the Feeding Frenzy rules
 - [X] T029 Measure frame time during the intro and an active Frenzy with the headless drive (SC-006: p95 under 16.7 ms at 1440×1440) and optimize drawing if needed
-- [ ] T030 Run the quickstart.md validation (manual, by the user)
+- [X] T030 Run the quickstart.md validation (manual, by the user)
 
 ---
 
