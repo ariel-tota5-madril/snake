@@ -8,6 +8,13 @@
 
 **Input**: User description: "SFX e BGM - quero que vc crie músicas e sfx estilo 8bit, upbeat. Crie sfx para o movimento da cobra (algo mais suave pra nao ficar mto obnoxious), coleta, animacao de punch do score, crash da cobra na parede ou nela mesma, e qualquer outro evento importante que vc encontre"
 
+## Clarifications
+
+### Session 2026-11-12
+
+- Q: Os volumes escolhidos em Opções devem continuar salvos quando o jogador fechar e abrir o jogo de novo? → A: Sim: salvar Música e Efeitos ao sair de Opções; ao abrir, usar os valores salvos (ou o padrão 60%/80% se não houver arquivo válido).
+- Q: Ao escolher "Continuar" na pausa, a partida deve voltar na hora ou depois de uma contagem curta? → A: Contagem rápida "3, 2, 1" de 1,5 s (0,5 s por número) com a cobra parada, depois retoma.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Sons da jogabilidade (Priority: P1)
@@ -103,7 +110,8 @@ e continuar a partida do mesmo ponto.
    congela (cobra, comida, pontuação e efeitos param) e aparece o menu de pausa com "Continuar",
    "Opções" e "Sair", com "Continuar" selecionado; a música de partida fica em volume reduzido.
 2. **Given** o menu de pausa, **When** o jogador escolhe "Continuar" ou pressiona Esc,
-   **Then** o menu fecha e a partida continua exatamente de onde parou.
+   **Then** o menu fecha, aparece uma contagem rápida "3, 2, 1" (0,5 s por número, 1,5 s no
+   total) com a cobra parada, e então a partida continua exatamente de onde parou.
 3. **Given** a tela inicial, **When** ela aparece, **Then** mostra um menu com "Jogar" e
    "Opções" (com "Jogar" selecionado), no lugar da instrução "Pressione Espaço para começar".
 4. **Given** a tela inicial, o menu de pausa ou o menu de fim de partida, **When** o jogador
@@ -133,7 +141,10 @@ e continuar a partida do mesmo ponto.
 - **Esc fora da partida**: na tela inicial, na contagem, no tremor e no fim de partida, Esc não
   pausa (só a tela de Opções e a pausa reagem ao Esc, para voltar).
 - **Pausa congela o tempo**: enquanto pausado, nada do jogo avança (passos, partículas, pulso,
-  tremor); ao continuar, a cobra retoma o ritmo normal, sem dar passos acumulados.
+  tremor); ao continuar, depois da contagem rápida, a cobra retoma o ritmo normal, sem dar passos
+  acumulados e mantendo a direção que tinha.
+- **Configuração salva ausente ou inválida** (arquivo apagado, corrompido ou com valores fora de
+  0–100%): o jogo abre normalmente com os volumes padrão, sem erro.
 - **Sliders nas pontas**: ← em 0% e → em 100% não mudam o valor nem tocam o bipe de navegação.
 - **Sons não alteram o jogo**: nenhum som muda a posição da cobra, da comida, a pontuação, as
   fases de tela ou o ritmo dos passos.
@@ -169,8 +180,10 @@ e continuar a partida do mesmo ponto.
   silêncio.
 - **FR-014**: Nenhum som PODE alterar o estado ou as regras da partida nem o fluxo de telas.
 - **FR-015**: Durante a partida, Esc DEVE pausar o jogo: tudo congela e aparece o menu de pausa
-  ("Continuar", "Opções", "Sair"); "Continuar" ou Esc retomam a partida exatamente do ponto em
-  que parou; "Sair" fecha o jogo. Durante a pausa, a música de partida DEVE ficar em volume
+  ("Continuar", "Opções", "Sair"); "Continuar" ou Esc fecham o menu e iniciam uma contagem
+  rápida "3, 2, 1" de 1,5 s (0,5 s por número, com os mesmos bipes da contagem inicial e a cobra
+  parada), depois da qual a partida retoma exatamente do ponto em que parou; durante essa
+  contagem, setas, Espaço, Enter e Esc NÃO DEVEM ter efeito; "Sair" fecha o jogo. Durante a pausa, a música de partida DEVE ficar em volume
   reduzido.
 - **FR-016**: A tela inicial DEVE apresentar um menu com "Jogar" e "Opções" no lugar da instrução
   "Pressione Espaço para começar"; o menu de fim de partida DEVE passar a ter "Restart",
@@ -180,8 +193,9 @@ e continuar a partida do mesmo ponto.
   com ← e →) e o item "Voltar"; "Voltar" ou Esc retornam à tela de origem no mesmo estado.
 - **FR-018**: Mudanças de volume DEVEM valer imediatamente; 0% DEVE silenciar o tipo de som
   correspondente; ajustar "Efeitos" DEVE tocar um som de amostra no novo volume.
-- **FR-019**: Os volumes escolhidos DEVEM continuar valendo ao reiniciar a partida, enquanto o
-  jogo estiver aberto.
+- **FR-019**: Os volumes escolhidos DEVEM ser salvos ao sair da tela de Opções e restaurados ao
+  abrir o jogo; se não houver configuração salva válida, DEVEM ser usados os valores padrão
+  (Música 60%, Efeitos 80%).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -190,7 +204,8 @@ e continuar a partida do mesmo ponto.
 - **Efeito sonoro (SFX)**: som curto associado a um evento, com volume relativo.
 - **Faixa de música (BGM)**: música em loop associada a uma tela (tela inicial, partida).
 - **Jingle**: música curta, sem loop, tocada no fim da partida (derrota ou vitória).
-- **Configuração de áudio**: volume da música e volume dos efeitos (0% a 100%).
+- **Configuração de áudio**: volume da música e volume dos efeitos (0% a 100%), salva entre
+  sessões.
 - **Menu**: lista de opções com uma selecionada (tela inicial, pausa, fim de partida, Opções).
 
 ## Success Criteria *(mandatory)*
@@ -214,8 +229,8 @@ e continuar a partida do mesmo ponto.
 - Mudar de direção não tem som próprio, para não poluir (o tique de movimento já dá o ritmo).
 - As animações de entrada e saída de interface não ganham som próprio, para não sobrepor os sons
   de confirmação e os jingles.
-- Volumes iniciais: Música 60%, Efeitos 80%; valem só enquanto o jogo está aberto (guardar
-  entre sessões fica para uma feature futura).
+- Volumes padrão: Música 60%, Efeitos 80%; os volumes escolhidos ficam salvos no computador do
+  jogador e valem nas próximas aberturas do jogo (FR-019).
 - O menu de pausa e a tela de Opções usam as mesmas animações de entrada e saída e os mesmos
   sons de navegação e confirmação dos outros menus.
 - As regras das features 001 e 002 continuam iguais. Mudam apenas as telas: a tela inicial
