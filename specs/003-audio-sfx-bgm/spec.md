@@ -14,6 +14,7 @@
 
 - Q: Os volumes escolhidos em Opções devem continuar salvos quando o jogador fechar e abrir o jogo de novo? → A: Sim: salvar Música e Efeitos ao sair de Opções; ao abrir, usar os valores salvos (ou o padrão 60%/80% se não houver arquivo válido).
 - Q: Ao escolher "Continuar" na pausa, a partida deve voltar na hora ou depois de uma contagem curta? → A: Contagem rápida "3, 2, 1" de 1,5 s (0,5 s por número) com a cobra parada, depois retoma.
+- Q: No menu de pausa, "Sair" deve fechar o jogo ou voltar para a tela inicial? → A: "Sair" vira "Tela inicial": abandona a partida e volta para a tela inicial (com o menu "Jogar / Opções").
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -108,7 +109,8 @@ e continuar a partida do mesmo ponto.
 
 1. **Given** uma partida em andamento, **When** o jogador pressiona Esc, **Then** a partida
    congela (cobra, comida, pontuação e efeitos param) e aparece o menu de pausa com "Continuar",
-   "Opções" e "Sair", com "Continuar" selecionado; a música de partida fica em volume reduzido.
+   "Opções" e "Tela inicial", com "Continuar" selecionado; a música de partida fica em volume
+   reduzido.
 2. **Given** o menu de pausa, **When** o jogador escolhe "Continuar" ou pressiona Esc,
    **Then** o menu fecha, aparece uma contagem rápida "3, 2, 1" (0,5 s por número, 1,5 s no
    total) com a cobra parada, e então a partida continua exatamente de onde parou.
@@ -125,7 +127,9 @@ e continuar a partida do mesmo ponto.
    volta para a tela de onde veio (tela inicial, pausa ou fim de partida), no mesmo estado.
 7. **Given** um volume em 0%, **When** o som correspondente deveria tocar, **Then** nada é
    ouvido (0% equivale a mudo).
-8. **Given** o menu de pausa, **When** o jogador escolhe "Sair", **Then** o jogo fecha.
+8. **Given** o menu de pausa, **When** o jogador escolhe "Tela inicial", **Then** a partida é
+   abandonada, a música de partida para e a tela inicial aparece (com o menu "Jogar" /
+   "Opções" e a música da tela inicial); "Jogar" começa uma partida nova com pontuação 0.
 
 ---
 
@@ -180,11 +184,12 @@ e continuar a partida do mesmo ponto.
   silêncio.
 - **FR-014**: Nenhum som PODE alterar o estado ou as regras da partida nem o fluxo de telas.
 - **FR-015**: Durante a partida, Esc DEVE pausar o jogo: tudo congela e aparece o menu de pausa
-  ("Continuar", "Opções", "Sair"); "Continuar" ou Esc fecham o menu e iniciam uma contagem
+  ("Continuar", "Opções", "Tela inicial"); "Continuar" ou Esc fecham o menu e iniciam uma contagem
   rápida "3, 2, 1" de 1,5 s (0,5 s por número, com os mesmos bipes da contagem inicial e a cobra
   parada), depois da qual a partida retoma exatamente do ponto em que parou; durante essa
-  contagem, setas, Espaço, Enter e Esc NÃO DEVEM ter efeito; "Sair" fecha o jogo. Durante a pausa, a música de partida DEVE ficar em volume
-  reduzido.
+  contagem, setas, Espaço, Enter e Esc NÃO DEVEM ter efeito; "Tela inicial" DEVE abandonar a
+  partida e voltar à tela inicial, de onde "Jogar" começa uma partida nova. Durante a pausa, a
+  música de partida DEVE ficar em volume reduzido.
 - **FR-016**: A tela inicial DEVE apresentar um menu com "Jogar" e "Opções" no lugar da instrução
   "Pressione Espaço para começar"; o menu de fim de partida DEVE passar a ter "Restart",
   "Opções" e "Quit".
